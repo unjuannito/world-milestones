@@ -40,6 +40,7 @@ public final class WorldMilestonesScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+		JsonArray categories = array("categories");
 		graphics.fill(0, 0, width, height, 0xA9101718);
 		float scale = uiScale();
 		int marginX = Math.max(4, Math.round(12 * scale));
