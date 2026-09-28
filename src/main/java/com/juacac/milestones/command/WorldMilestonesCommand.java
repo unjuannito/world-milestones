@@ -30,22 +30,22 @@ public final class WorldMilestonesCommand {
 		return Commands.literal(name)
 				.executes(context -> list(context.getSource()))
 					.then(Commands.literal("list").executes(context -> list(context.getSource())))
-					.then(Commands.literal("reload").requires(source -> source.hasPermission(2)).executes(context -> reload(context.getSource())))
+					.then(Commands.literal("reload").requires(source -> hasPermissionLevel(source, 2)).executes(context -> reload(context.getSource())))
 					.then(Commands.literal("open").executes(context -> open(context.getSource())))
 					.then(Commands.literal("info")
 							.then(Commands.argument("quest", StringArgumentType.greedyString())
 									.executes(context -> info(context.getSource(), StringArgumentType.getString(context, "quest")))))
-					.then(Commands.literal("complete").requires(source -> source.hasPermission(2))
+					.then(Commands.literal("complete").requires(source -> hasPermissionLevel(source, 2))
 							.then(Commands.argument("quest", StringArgumentType.greedyString())
 									.executes(context -> complete(context.getSource(), StringArgumentType.getString(context, "quest")))))
-					.then(Commands.literal("reset").requires(source -> source.hasPermission(2))
+					.then(Commands.literal("reset").requires(source -> hasPermissionLevel(source, 2))
 							.then(Commands.argument("quest", StringArgumentType.greedyString())
 									.executes(context -> reset(context.getSource(), StringArgumentType.getString(context, "quest")))))
-					.then(Commands.literal("progress").requires(source -> source.hasPermission(2))
+					.then(Commands.literal("progress").requires(source -> hasPermissionLevel(source, 2))
 							.then(Commands.argument("quest", StringArgumentType.word())
 									.then(Commands.argument("amount", LongArgumentType.longArg(0))
 										.executes(context -> progress(context.getSource(), StringArgumentType.getString(context, "quest"), LongArgumentType.getLong(context, "amount"))))))
-					.then(Commands.literal("section").requires(source -> source.hasPermission(2))
+					.then(Commands.literal("section").requires(source -> hasPermissionLevel(source, 2))
 							.then(Commands.argument("quest", StringArgumentType.word())
 									.then(Commands.argument("section", StringArgumentType.word())
 											.executes(context -> completeSection(context.getSource(), StringArgumentType.getString(context, "quest"), StringArgumentType.getString(context, "section"))))));
@@ -53,7 +53,7 @@ public final class WorldMilestonesCommand {
 
 	private static int list(CommandSourceStack source) {
 		var categories = ConfigManager.categories().values().stream()
-				.filter(category -> category.visible && source.hasPermission(category.requiredPermissionLevel))
+				.filter(category -> category.visible && hasPermissionLevel(source, category.requiredPermissionLevel))
 				.sorted(Comparator.comparingInt(category -> category.order))
 				.toList();
 		source.sendSuccess(() -> Component.literal("World Milestones"), false);
@@ -226,17 +226,24 @@ public final class WorldMilestonesCommand {
 	}
 
 	private static boolean visibleTo(QuestDefinition quest, CommandSourceStack source) {
-		if ((quest.hidden || "operator".equalsIgnoreCase(quest.visibility)) && !source.hasPermission(2)) {
+		if ((quest.hidden || "operator".equalsIgnoreCase(quest.visibility)) && !hasPermissionLevel(source, 2)) {
 			return false;
 		}
 		CategoryDefinition category = ConfigManager.categories().get(quest.category);
-		return category != null && category.visible && source.hasPermission(category.requiredPermissionLevel);
+		return category != null && category.visible && hasPermissionLevel(source, category.requiredPermissionLevel);
+	}
+
+	private static boolean hasPermissionLevel(CommandSourceStack source, int permissionLevel) {
+		if (permissionLevel <= 0 || source.getEntity() == null) {
+			return true;
+		}
+		return source.getEntity() instanceof ServerPlayer player && TemplateMod.hasPermissionLevel(player, permissionLevel);
 	}
 
 	private static void grantRewards(java.util.List<com.google.gson.JsonObject> rewards, String sourceId, ServerPlayer player) {
 		for (var rewardData : rewards) {
 			try {
-				RewardTypeRegistry.create(rewardData).ifPresent(reward -> reward.grant(player, player.getServer()));
+				RewardTypeRegistry.create(rewardData).ifPresent(reward -> reward.grant(player, player.serverLevel().getServer()));
 			} catch (RuntimeException exception) {
 				TemplateMod.LOGGER.error("Could not grant reward for {}", sourceId, exception);
 			}

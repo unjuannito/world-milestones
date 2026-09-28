@@ -19,13 +19,13 @@ import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.Comparator;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Comparator;
+
 public class TemplateMod implements ModInitializer {
-	public static final String MOD_ID = "worldmilestones";
+	public static final String MOD_ID = "template-mod";
 	private static final Gson GSON = new GsonBuilder().create();
 	private static ProgressStore progressStore;
 
@@ -38,7 +38,7 @@ public class TemplateMod implements ModInitializer {
 	public void onInitialize() {
 		LOGGER.info("World Milestones initialized");
 		ConfigManager.reload();
-		PayloadTypeRegistry.playS2C().register(MilestoneSnapshotPayload.TYPE, MilestoneSnapshotPayload.CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(MilestoneSnapshotPayload.TYPE, MilestoneSnapshotPayload.CODEC);
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> WorldMilestonesCommand.register(dispatcher));
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> progressStore = ProgressStore.load(server));
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -65,12 +65,16 @@ public class TemplateMod implements ModInitializer {
 		return progressStore;
 	}
 
+	public static boolean hasPermissionLevel(ServerPlayer player, int permissionLevel) {
+		return permissionLevel <= 0 || player.serverLevel().getServer().getPlayerList().isOp(player.getGameProfile());
+	}
+
 	public static void sendSnapshot(ServerPlayer player, boolean openScreen) {
 		JsonObject snapshot = new JsonObject();
 		snapshot.addProperty("open", openScreen);
 		JsonArray categories = new JsonArray();
 		for (CategoryDefinition category : ConfigManager.categories().values().stream().sorted(Comparator.comparingInt(value -> value.order)).toList()) {
-			if (category.visible && player.hasPermissions(category.requiredPermissionLevel)) {
+			if (category.visible && hasPermissionLevel(player, category.requiredPermissionLevel)) {
 				categories.add(GSON.toJsonTree(category));
 			}
 		}
@@ -82,8 +86,8 @@ public class TemplateMod implements ModInitializer {
 		for (QuestDefinition quest : ConfigManager.quests().values().stream().sorted(Comparator.comparingInt(value -> value.order)).toList()) {
 			boolean operatorOnly = quest.hidden || "operator".equalsIgnoreCase(quest.visibility);
 			CategoryDefinition category = ConfigManager.categories().get(quest.category);
-			if ((operatorOnly && !player.hasPermissions(2)) || category == null
-					|| !category.visible || !player.hasPermissions(category.requiredPermissionLevel)) {
+			if ((operatorOnly && !hasPermissionLevel(player, 2)) || category == null
+					|| !category.visible || !hasPermissionLevel(player, category.requiredPermissionLevel)) {
 				continue;
 			}
 			quests.add(GSON.toJsonTree(quest));
@@ -105,10 +109,7 @@ public class TemplateMod implements ModInitializer {
 	}
 
 	public static void syncProgress(QuestDefinition quest, ServerPlayer actor) {
-		var server = actor.getServer();
-		if (server == null) {
-			return;
-		}
+		var server = actor.serverLevel().getServer();
 		var actorTeam = actor.getTeam();
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			boolean affected = switch (quest.progressScope) {

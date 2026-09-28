@@ -47,7 +47,7 @@ public final class RewardTypeRegistry {
 	private record ItemReward(Identifier itemId, int count) implements Reward {
 		@Override
 		public void grant(ServerPlayer player, MinecraftServer server) {
-			var item = BuiltInRegistries.ITEM.get(itemId);
+			var item = BuiltInRegistries.ITEM.get(itemId).orElse(null);
 			if (item == null || count <= 0) {
 				return;
 			}
@@ -61,7 +61,7 @@ public final class RewardTypeRegistry {
 	private record CommandReward(String command) implements Reward {
 		@Override
 		public void grant(ServerPlayer player, MinecraftServer server) {
-			String resolvedCommand = command.replace("%player%", player.getGameProfile().getName());
+			String resolvedCommand = command.replace("%player%", player.getGameProfile().name());
 			server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), resolvedCommand);
 		}
 	}
