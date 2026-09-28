@@ -1,5 +1,6 @@
 package com.juacac.milestones.storage;
 
+import com.google.gson.JsonObject;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.juacac.milestones.quest.QuestDefinition;
@@ -13,6 +14,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Collections;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -103,6 +105,48 @@ public final class ProgressStore {
 			save();
 		}
 		return added;
+	}
+
+	public boolean isSectionRewarded(QuestDefinition quest, QuestDefinition.Section section, ServerPlayer player) {
+		String key = sectionKey(quest, section);
+		return switch (quest.progressScope) {
+			case GLOBAL -> world.rewardedGlobalSections.contains(key);
+			case TEAM -> world.rewardedTeamSections.contains(teamKey(quest, player) + "#" + section.id);
+			case PERSONAL -> playerProgress(player).rewardedSections.contains(key);
+		};
+	}
+
+	public boolean hasGlobalRewardDefinition(String sourceId) {
+		return world.globalRewardDefinitions.containsKey(sourceId)
+				|| world.globalRewardDefinitions.keySet().stream().anyMatch(key -> key.startsWith(sourceId + "#"));
+	}
+
+	public void registerGlobalReward(String sourceId, List<JsonObject> rewards, boolean repeatable) {
+		String key = repeatable ? sourceId + "#" + (++world.globalRewardSerial) : sourceId;
+		if (world.globalRewardDefinitions.containsKey(key)) {
+			return;
+		}
+		List<JsonObject> snapshot = rewards.stream().map(JsonObject::deepCopy).toList();
+		world.globalRewardDefinitions.put(key, new ArrayList<>(snapshot));
+		save();
+	}
+
+	public Map<String, List<JsonObject>> pendingGlobalRewards(UUID playerId) {
+		Set<String> claimed = players.getOrDefault(playerId, new PlayerProgress()).claimedGlobalRewards;
+		Map<String, List<JsonObject>> pending = new HashMap<>();
+		world.globalRewardDefinitions.forEach((key, rewards) -> {
+			if (!claimed.contains(key)) {
+				pending.put(key, rewards);
+			}
+		});
+		return pending;
+	}
+
+	public void markGlobalRewardClaimed(UUID playerId, String key) {
+		PlayerProgress progress = players.computeIfAbsent(playerId, ignored -> new PlayerProgress());
+		if (progress.claimedGlobalRewards.add(key)) {
+			save();
+		}
 	}
 
 	public boolean isCompleted(QuestDefinition quest, ServerPlayer player) {
@@ -214,6 +258,7 @@ public final class ProgressStore {
 			case GLOBAL -> {
 				world.globalProgress.remove(quest.id);
 				world.completedGlobal.remove(quest.id);
+				clearGlobalRewardRecords(quest.id);
 			}
 			case TEAM -> {
 				String teamKey = teamKey(quest, player);
@@ -226,6 +271,16 @@ public final class ProgressStore {
 			}
 		}
 		save();
+	}
+
+	private void clearGlobalRewardRecords(String questId) {
+		Set<String> removedKeys = world.globalRewardDefinitions.keySet().stream()
+				.filter(key -> key.equals(questId) || key.startsWith(questId + "#") || key.startsWith(questId + "/"))
+				.collect(java.util.stream.Collectors.toSet());
+		world.globalRewardDefinitions.keySet().removeAll(removedKeys);
+		for (PlayerProgress player : players.values()) {
+			player.claimedGlobalRewards.removeAll(removedKeys);
+		}
 	}
 
 	public void save() {
@@ -263,6 +318,10 @@ public final class ProgressStore {
 		world.rewardedGlobalSections.addAll(source.rewardedGlobalSections);
 		world.rewardedTeamSections.addAll(source.rewardedTeamSections);
 		world.milestonesAdmins.addAll(source.milestonesAdmins);
+		if (source.globalRewardDefinitions != null) {
+			source.globalRewardDefinitions.forEach((key, rewards) -> world.globalRewardDefinitions.put(key, new ArrayList<>(rewards)));
+		}
+		world.globalRewardSerial = source.globalRewardSerial;
 		world.weeklyRotationKey = source.weeklyRotationKey;
 		if (source.activeWeeklyQuests != null) {
 			world.activeWeeklyQuests.addAll(source.activeWeeklyQuests);

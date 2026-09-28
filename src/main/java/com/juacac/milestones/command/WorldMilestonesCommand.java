@@ -272,6 +272,33 @@ public final class WorldMilestonesCommand {
 		TemplateMod.syncProgress(quest, player);
 	}
 
+	public static void deliverPendingGlobalRewards(ServerPlayer player) {
+		ProgressStore store = TemplateMod.progress();
+		for (QuestDefinition quest : ConfigManager.quests().values()) {
+			if (quest.progressScope != QuestDefinition.ProgressScope.GLOBAL) {
+				continue;
+			}
+			if (store.isCompleted(quest, player) && !store.hasGlobalRewardDefinition(quest.id)) {
+				store.registerGlobalReward(quest.id, quest.rewards, false);
+			}
+			for (QuestDefinition.Section section : quest.sections) {
+				String sourceId = quest.id + "/" + section.id;
+				if (store.isSectionRewarded(quest, section, player) && !store.hasGlobalRewardDefinition(sourceId)) {
+					store.registerGlobalReward(sourceId, section.rewards, false);
+				}
+			}
+		}
+		deliverStoredGlobalRewards(player);
+	}
+
+	private static void deliverStoredGlobalRewards(ServerPlayer player) {
+		ProgressStore store = TemplateMod.progress();
+		store.pendingGlobalRewards(player.getUUID()).forEach((key, rewards) -> {
+			grantRewards(rewards, key, player);
+			store.markGlobalRewardClaimed(player.getUUID(), key);
+		});
+	}
+
 	private static QuestDefinition findQuest(CommandSourceStack source, String id) {
 		QuestDefinition quest = ConfigManager.quest(id);
 		if (quest == null || !visibleTo(quest, source)) {
@@ -286,8 +313,10 @@ public final class WorldMilestonesCommand {
 
 	private static void grantRewardsForScope(QuestDefinition quest, java.util.List<com.google.gson.JsonObject> rewards, String sourceId, ServerPlayer actor) {
 		if (quest.progressScope == QuestDefinition.ProgressScope.GLOBAL) {
+			ProgressStore store = TemplateMod.progress();
+			store.registerGlobalReward(sourceId, rewards, quest.repeatable);
 			for (ServerPlayer player : actor.level().getServer().getPlayerList().getPlayers()) {
-				grantRewards(rewards, sourceId, player);
+				deliverStoredGlobalRewards(player);
 			}
 		} else {
 			grantRewards(rewards, sourceId, actor);

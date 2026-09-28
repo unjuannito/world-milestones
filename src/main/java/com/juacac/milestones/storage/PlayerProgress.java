@@ -12,4 +12,5 @@ public final class PlayerProgress {
 	public Map<String, Long> automaticBaselines = new HashMap<>();
 	public Set<String> completed = new HashSet<>();
 	public Set<String> rewardedSections = new HashSet<>();
+	public Set<String> claimedGlobalRewards = new HashSet<>();
 }

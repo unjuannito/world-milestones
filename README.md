@@ -60,7 +60,7 @@ Commands are available with either the `/wm` or `/worldmilestones` prefix. For e
 
 `/wm`, `list`, `open`, and `info` are available to players. `reload`, `complete`, `progress`, `section`, and `reset` are available to OPs and designated milestones-admins. Only OPs can assign or remove milestones-admins. Quest and section arguments are IDs from the JSON configuration; `progress` and `section` expect single-word IDs.
 
-Progress is saved in the active world at `data/worldmilestones-progress.json`, independently of quest definitions. Personal progress is keyed by player UUID; global progress is shared by the world; team progress uses the player's scoreboard team, falling back to a private key when the player has no team.
+Progress is saved in the active world at `data/worldmilestones-progress.json`, independently of quest definitions. Personal progress is keyed by player UUID; global progress is shared by the world; team progress uses the player's scoreboard team, falling back to a private key when the player has no team. Global reward definitions are snapshotted into this world data when unlocked, and each player's delivery is recorded by UUID. Players who are offline at unlock receive their pending global rewards the next time they join. Previously unlocked global milestones are also migrated from the loaded quest configuration when players next join.
 
 ## Client
 

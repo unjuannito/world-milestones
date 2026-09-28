@@ -59,6 +59,7 @@ public class TemplateMod implements ModInitializer {
 				sendSnapshot(handler.player, false);
 			}
 			AutomaticProgressTracker.onJoin(handler.player);
+			WorldMilestonesCommand.deliverPendingGlobalRewards(handler.player);
 		});
 	}
 

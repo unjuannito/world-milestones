@@ -1,8 +1,11 @@
 package com.juacac.milestones.storage;
 
+import com.google.gson.JsonObject;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -16,6 +19,8 @@ public final class WorldProgress {
 	public Set<String> rewardedGlobalSections = new HashSet<>();
 	public Set<String> rewardedTeamSections = new HashSet<>();
 	public Set<String> milestonesAdmins = new HashSet<>();
+	public Map<String, List<JsonObject>> globalRewardDefinitions = new HashMap<>();
+	public long globalRewardSerial;
 	public String weeklyRotationKey = "";
 	public java.util.List<String> activeWeeklyQuests = new ArrayList<>();
 }
