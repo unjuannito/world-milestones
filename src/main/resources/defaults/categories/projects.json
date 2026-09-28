@@ -1,0 +1,10 @@
+{
+  "id": "projects",
+  "name": "Projects",
+  "description": "Collaborative work in progress.",
+  "icon": "minecraft:crafting_table",
+  "color": "#FFAA00",
+  "order": 2,
+  "visible": true,
+  "requiredPermissionLevel": 0
+}

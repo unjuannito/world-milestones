@@ -1,0 +1,47 @@
+{
+  "id": "world:first_spawn",
+  "name": "The New Beginning",
+  "description": "Build and finish the new community spawn.",
+  "category": "world",
+  "icon": "minecraft:beacon",
+  "type": "milestone",
+  "visibility": "public",
+  "required_progress": 1,
+  "progress_scope": "GLOBAL",
+  "completion_mode": "ALL",
+  "repeatable": false,
+  "hidden": false,
+  "order": 0,
+  "sections": [
+    {
+      "id": "foundation",
+      "name": "Build the main foundation",
+      "description": "Lay out the shared spawn area.",
+      "icon": "minecraft:stone_bricks",
+      "required": true,
+      "required_progress": 1
+    },
+    {
+      "id": "finishing",
+      "name": "Finish paths and lighting",
+      "description": "Make the area safe and accessible.",
+      "icon": "minecraft:lantern",
+      "required": true,
+      "required_progress": 1
+    },
+    {
+      "id": "garden",
+      "name": "Add a community garden",
+      "description": "An optional finishing touch.",
+      "icon": "minecraft:oak_sapling",
+      "required": false,
+      "required_progress": 1
+    }
+  ],
+  "requirements": [],
+  "rewards": [
+    { "type": "experience", "amount": 100 },
+    { "type": "item", "item": "minecraft:diamond", "count": 1 },
+    { "type": "command", "command": "say %player% completed The New Beginning!" }
+  ]
+}

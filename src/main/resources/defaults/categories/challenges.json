@@ -1,0 +1,10 @@
+{
+  "id": "challenges",
+  "name": "Challenges",
+  "description": "Optional challenges for the community.",
+  "icon": "minecraft:iron_sword",
+  "color": "#FF5555",
+  "order": 3,
+  "visible": true,
+  "requiredPermissionLevel": 0
+}

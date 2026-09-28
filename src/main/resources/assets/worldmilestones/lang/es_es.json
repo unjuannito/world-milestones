@@ -1,0 +1,14 @@
+{
+  "key.categories.worldmilestones": "World Milestones",
+  "key.worldmilestones.open": "Abrir World Milestones",
+  "gui.worldmilestones.title": "HITOS DEL MUNDO",
+  "gui.worldmilestones.open": "World Milestones",
+  "gui.worldmilestones.back": "Volver",
+  "gui.worldmilestones.categories": "Categorías",
+  "gui.worldmilestones.empty": "Ninguna misión seleccionada",
+  "gui.worldmilestones.completed": "Completada",
+  "gui.worldmilestones.in_progress": "En progreso",
+  "gui.worldmilestones.sections": "Secciones",
+  "gui.worldmilestones.requirements": "Requisitos",
+  "gui.worldmilestones.rewards": "Recompensas"
+}

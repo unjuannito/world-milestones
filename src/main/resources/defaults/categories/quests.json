@@ -1,0 +1,10 @@
+{
+  "id": "quests",
+  "name": "Quests",
+  "description": "Personal and community quests.",
+  "icon": "minecraft:book",
+  "color": "#55AAFF",
+  "order": 1,
+  "visible": true,
+  "requiredPermissionLevel": 0
+}

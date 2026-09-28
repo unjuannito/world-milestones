@@ -1,0 +1,10 @@
+{
+  "id": "world",
+  "name": "World Milestones",
+  "description": "Grandes hitos que cambian el mundo.",
+  "icon": "minecraft:grass_block",
+  "color": "#55FF55",
+  "order": 0,
+  "visible": true,
+  "requiredPermissionLevel": 0
+}

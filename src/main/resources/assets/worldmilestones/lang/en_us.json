@@ -1,0 +1,14 @@
+{
+  "key.categories.worldmilestones": "World Milestones",
+  "key.worldmilestones.open": "Open World Milestones",
+  "gui.worldmilestones.title": "WORLD MILESTONES",
+  "gui.worldmilestones.open": "World Milestones",
+  "gui.worldmilestones.back": "Back",
+  "gui.worldmilestones.categories": "Categories",
+  "gui.worldmilestones.empty": "No quest selected",
+  "gui.worldmilestones.completed": "Completed",
+  "gui.worldmilestones.in_progress": "In progress",
+  "gui.worldmilestones.sections": "Sections",
+  "gui.worldmilestones.requirements": "Requirements",
+  "gui.worldmilestones.rewards": "Rewards"
+}

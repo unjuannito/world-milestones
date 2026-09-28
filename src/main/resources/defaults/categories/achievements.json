@@ -1,0 +1,10 @@
+{
+  "id": "achievements",
+  "name": "Achievements",
+  "description": "Notable accomplishments.",
+  "icon": "minecraft:golden_apple",
+  "color": "#FFFF55",
+  "order": 4,
+  "visible": true,
+  "requiredPermissionLevel": 0
+}
