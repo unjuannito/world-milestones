@@ -21,6 +21,13 @@ public final class WorldProgress {
 	public Set<String> milestonesAdmins = new HashSet<>();
 	public Map<String, List<JsonObject>> globalRewardDefinitions = new HashMap<>();
 	public long globalRewardSerial;
+	public Map<String, CategoryRotation> categoryRotations = new HashMap<>();
 	public String weeklyRotationKey = "";
 	public java.util.List<String> activeWeeklyQuests = new ArrayList<>();
+
+	public static final class CategoryRotation {
+		public long intervalMillis;
+		public long nextRotationAt;
+		public List<String> activeQuestIds = new ArrayList<>();
+	}
 }

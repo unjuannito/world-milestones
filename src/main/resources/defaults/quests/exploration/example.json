@@ -2,19 +2,21 @@
   "id": "quests:collect_stone",
   "name": "A Solid Start",
   "description": "Gather stone for the first shared workshop.",
-  "category": "quests",
+  "category": "exploration",
   "icon": "minecraft:stone",
   "type": "quest",
   "visibility": "public",
   "required_progress": 8,
+  "automatic": [
+    { "type": "block_mined", "target": "minecraft:stone" }
+  ],
   "progress_scope": "PERSONAL",
   "completion_mode": "ALL",
   "repeatable": false,
   "hidden": false,
   "order": 0,
   "sections": [
-    { "id": "mine", "name": "Mine stone", "required": true, "required_progress": 8 },
-    { "id": "deliver", "name": "Deliver materials", "required": false, "required_progress": 1 }
+    { "id": "mine", "name": "Mine stone", "required": true, "required_progress": 8 }
   ],
   "requirements": [
     { "type": "item", "item": "minecraft:stone", "count": 8 }

@@ -15,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 
 public final class WorldMilestonesScreen extends Screen {
 	private static JsonObject snapshot = new JsonObject();
+	private static long snapshotReceivedAt;
 	private final Screen parent;
 	private String selectedCategory;
 	private String selectedQuest;
@@ -26,6 +27,7 @@ public final class WorldMilestonesScreen extends Screen {
 
 	public static void setSnapshot(JsonObject newSnapshot) {
 		snapshot = newSnapshot;
+		snapshotReceivedAt = System.currentTimeMillis();
 	}
 
 	@Override
@@ -48,7 +50,7 @@ public final class WorldMilestonesScreen extends Screen {
 		int tabY = Math.max(4, Math.round(6 * scale));
 		int panelLeft = marginX;
 		int panelRight = width - marginX;
-		int panelTop = tabY + tabSize - Math.max(4, Math.round(6 * scale));
+		int panelTop = categoryPanelTop(tabY, tabSize, scale);
 		int panelBottom = Math.min(height - marginX, panelTop + desiredPanelHeight(scale));
 		int border = Math.max(2, Math.round(3 * scale));
 		graphics.fill(panelLeft + 2, panelTop + 3, panelRight + 2, panelBottom + 3, 0xFF101010);
@@ -83,6 +85,7 @@ public final class WorldMilestonesScreen extends Screen {
 		super.extractRenderState(graphics, mouseX, mouseY, delta);
 		drawQuestRows(graphics, scale, panelTop, panelBottom);
 		drawCategoryTabIcons(graphics, categories, panelLeft, tabY, tabSize, scale);
+		drawRotationCountdown(graphics, panelLeft, tabY, tabSize, scale);
 	}
 
 	@Override
@@ -117,7 +120,9 @@ public final class WorldMilestonesScreen extends Screen {
 		}
 		float scale = uiScale();
 		int marginX = Math.max(4, Math.round(12 * scale));
-		int panelTop = Math.max(4, Math.round(6 * scale)) + Math.max(28, Math.round(42 * scale)) - Math.max(4, Math.round(6 * scale));
+		int tabY = Math.max(4, Math.round(6 * scale));
+		int tabSize = Math.max(28, Math.round(42 * scale));
+		int panelTop = categoryPanelTop(tabY, tabSize, scale);
 		int panelBottom = Math.min(height - marginX, panelTop + desiredPanelHeight(scale));
 		int contentLeft = marginX + Math.round(12 * scale);
 		int contentRight = width - marginX - Math.round(12 * scale);
@@ -214,6 +219,36 @@ public final class WorldMilestonesScreen extends Screen {
 						tabX + tabSize - Math.round(5 * scale), tabY + tabSize - Math.max(1, Math.round(2 * scale)), 0xFFFFD866);
 			}
 		}
+	}
+
+	private void drawRotationCountdown(GuiGraphicsExtractor graphics, int panelLeft, int tabY, int tabSize, float scale) {
+		JsonObject category = findCategory(selectedCategory);
+		if (category == null) {
+			return;
+		}
+		long remainingMillis = number(category, "rotation_remaining_ms", -1);
+		if (remainingMillis < 0) {
+			return;
+		}
+		remainingMillis = Math.max(0, remainingMillis - Math.max(0, System.currentTimeMillis() - snapshotReceivedAt));
+		long seconds = (remainingMillis + 999) / 1000;
+		long days = seconds / 86_400;
+		long hours = (seconds % 86_400) / 3_600;
+		long minutes = (seconds % 3_600) / 60;
+		String remaining = days > 0 ? days + "d " + hours + "h"
+				: hours > 0 ? hours + "h " + minutes + "m" : minutes + "m " + (seconds % 60) + "s";
+		graphics.text(font, Component.translatable("gui.worldmilestones.refresh", remaining),
+				panelLeft + Math.round(4 * scale), tabY + tabSize + Math.round(2 * scale), 0xFFE4D7B8);
+	}
+
+	private int categoryPanelTop(int tabY, int tabSize, float scale) {
+		int top = tabY + tabSize - Math.max(4, Math.round(6 * scale));
+		return hasRotationCountdown() ? top + Math.round(22 * scale) : top;
+	}
+
+	private boolean hasRotationCountdown() {
+		JsonObject category = findCategory(selectedCategory);
+		return category != null && number(category, "rotation_remaining_ms", -1) >= 0;
 	}
 
 	private void drawQuestDetails(GuiGraphicsExtractor graphics, int left, int right, int top, int bottom, float scale) {

@@ -19,6 +19,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class AutomaticProgressTracker {
@@ -36,12 +37,47 @@ public final class AutomaticProgressTracker {
 	public static void onJoin(ServerPlayer player) {
 		ARMOR_SNAPSHOTS.put(player.getUUID(), readArmor(player));
 		for (QuestDefinition quest : ConfigManager.quests().values()) {
+			if (ConfigManager.isRotatingQuest(quest) && ConfigManager.isQuestActive(quest)) {
+				captureActivationBaselines(player, quest);
+			}
+		}
+		for (QuestDefinition quest : ConfigManager.quests().values()) {
+			if (!ConfigManager.isQuestActive(quest)) {
+				continue;
+			}
 			for (JsonObject trigger : quest.automatic) {
 				if ("server_join".equals(trigger.get("type").getAsString())) {
 					long current = TemplateMod.progress().getProgress(quest, player);
 					WorldMilestonesCommand.applyAutomaticProgress(quest, player, current + 1);
 					break;
 				}
+			}
+		}
+	}
+
+	public static void captureActivationBaselines(MinecraftServer server, Set<String> questIds) {
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			for (String questId : questIds) {
+				QuestDefinition quest = ConfigManager.quest(questId);
+				if (quest != null && ConfigManager.isRotatingQuest(quest)) {
+					captureActivationBaselines(player, quest);
+				}
+			}
+		}
+	}
+
+	private static void captureActivationBaselines(ServerPlayer player, QuestDefinition quest) {
+		for (JsonObject trigger : quest.automatic) {
+			if (!trigger.has("type") || "server_join".equals(trigger.get("type").getAsString())) {
+				continue;
+			}
+			try {
+				long value = readRawStat(player, trigger);
+				if (value >= 0) {
+					TemplateMod.progress().setAutomaticBaseline(player.getUUID(), baselineKey(quest, trigger), value);
+				}
+			} catch (RuntimeException exception) {
+				TemplateMod.LOGGER.warn("Could not capture automatic baseline for {}", trigger, exception);
 			}
 		}
 	}
@@ -54,7 +90,7 @@ public final class AutomaticProgressTracker {
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			trackArmorChanges(player);
 			for (QuestDefinition quest : ConfigManager.quests().values()) {
-				if (quest.automatic.isEmpty() || (quest.weekly && !TemplateMod.progress().activeWeeklyQuests().contains(quest.id))) {
+				if (quest.automatic.isEmpty() || !ConfigManager.isQuestActive(quest)) {
 					continue;
 				}
 				long observed = 0;
@@ -72,10 +108,31 @@ public final class AutomaticProgressTracker {
 		if (!trigger.has("type")) {
 			return 0;
 		}
+		try {
+			long value = readRawStat(player, trigger);
+			if (value < 0) {
+				return 0;
+			}
+			if (ConfigManager.isRotatingQuest(quest)) {
+				String baselineKey = baselineKey(quest, trigger);
+				long baseline = TemplateMod.progress().getAutomaticBaseline(player.getUUID(), baselineKey);
+				if (baseline < 0) {
+					TemplateMod.progress().setAutomaticBaseline(player.getUUID(), baselineKey, value);
+					return 0;
+				}
+				return Math.max(0, value - baseline);
+			}
+			return value;
+		} catch (RuntimeException exception) {
+			TemplateMod.LOGGER.warn("Invalid automatic milestone trigger {}", trigger, exception);
+			return 0;
+		}
+	}
+
+	private static long readRawStat(ServerPlayer player, JsonObject trigger) {
 		String type = trigger.get("type").getAsString();
 		String target = trigger.has("target") ? trigger.get("target").getAsString() : "";
-		try {
-			Stat<?> stat = switch (type) {
+		Stat<?> stat = switch (type) {
 				case "mob_killed" -> {
 					var entityType = BuiltInRegistries.ENTITY_TYPE.get(Identifier.parse(target)).orElse(null);
 					yield entityType == null ? null : Stats.ENTITY_KILLED.get(entityType.value());
@@ -105,28 +162,18 @@ public final class AutomaticProgressTracker {
 				case "mob_kills" -> Stats.CUSTOM.get(Stats.MOB_KILLS);
 				case "armor_worn" -> null;
 				default -> null;
-			};
-			if ("armor_worn".equals(type)) {
-				return TemplateMod.progress().getAutomaticCount(player.getUUID(), type);
-			}
-			if (stat == null) {
-				return 0;
-			}
-			long value = player.getStats().getValue(stat);
-			if (quest.weekly) {
-				String baselineKey = quest.id + "#" + trigger;
-				long baseline = TemplateMod.progress().getAutomaticBaseline(player.getUUID(), baselineKey);
-				if (baseline < 0) {
-					TemplateMod.progress().setAutomaticBaseline(player.getUUID(), baselineKey, value);
-					return 0;
-				}
-				return Math.max(0, value - baseline);
-			}
-			return value;
-		} catch (RuntimeException exception) {
-			TemplateMod.LOGGER.warn("Invalid automatic milestone trigger {}", trigger, exception);
-			return 0;
+		};
+		if ("armor_worn".equals(type)) {
+			return TemplateMod.progress().getAutomaticCount(player.getUUID(), type);
 		}
+		if (stat == null) {
+			return -1;
+		}
+		return player.getStats().getValue(stat);
+	}
+
+	private static String baselineKey(QuestDefinition quest, JsonObject trigger) {
+		return quest.id + "#" + trigger;
 	}
 
 	private static void trackArmorChanges(ServerPlayer player) {

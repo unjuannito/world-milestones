@@ -2,7 +2,7 @@
   "id": "quests:weekly_miner",
   "name": "Weekly Miner (edit me)",
   "description": "Mine stone during this week's rotation.",
-  "category": "quests",
+  "category": "semanal",
   "icon": "minecraft:iron_pickaxe",
   "type": "quest",
   "visibility": "public",
@@ -10,7 +10,6 @@
   "progress_scope": "PERSONAL",
   "completion_mode": "ALL",
   "repeatable": false,
-  "weekly": true,
   "automatic": [
     { "type": "block_mined", "target": "minecraft:stone" }
   ],

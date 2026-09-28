@@ -82,9 +82,16 @@ public class TemplateMod implements ModInitializer {
 		JsonObject snapshot = new JsonObject();
 		snapshot.addProperty("open", openScreen);
 		JsonArray categories = new JsonArray();
+		long snapshotTime = System.currentTimeMillis();
 		for (CategoryDefinition category : ConfigManager.categories().values().stream().sorted(Comparator.comparingInt(value -> value.order)).toList()) {
 			if (category.visible && hasPermissionLevel(player, category.requiredPermissionLevel)) {
-				categories.add(GSON.toJsonTree(category));
+				JsonObject categorySnapshot = GSON.toJsonTree(category).getAsJsonObject();
+				long nextRotationAt = ConfigManager.nextRotationAt(category.id);
+				if (category.rotationIntervalMillis() > 0 && nextRotationAt > 0) {
+					categorySnapshot.addProperty("next_rotation_at", nextRotationAt);
+					categorySnapshot.addProperty("rotation_remaining_ms", Math.max(0, nextRotationAt - snapshotTime));
+				}
+				categories.add(categorySnapshot);
 			}
 		}
 		snapshot.add("categories", categories);
@@ -93,7 +100,7 @@ public class TemplateMod implements ModInitializer {
 		JsonObject sectionProgress = new JsonObject();
 		JsonArray completed = new JsonArray();
 		for (QuestDefinition quest : ConfigManager.quests().values().stream().sorted(Comparator.comparingInt(value -> value.order)).toList()) {
-			if (quest.weekly && (!ConfigManager.weeklyEnabled() || !progress().activeWeeklyQuests().contains(quest.id))) {
+			if (!ConfigManager.isQuestActive(quest)) {
 				continue;
 			}
 			boolean operatorOnly = quest.hidden || "operator".equalsIgnoreCase(quest.visibility);

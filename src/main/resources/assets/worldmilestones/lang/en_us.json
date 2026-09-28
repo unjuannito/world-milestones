@@ -11,5 +11,6 @@
   "gui.worldmilestones.progress": "Progress",
   "gui.worldmilestones.sections": "Sections",
   "gui.worldmilestones.requirements": "Requirements",
-  "gui.worldmilestones.rewards": "Rewards"
+  "gui.worldmilestones.rewards": "Rewards",
+  "gui.worldmilestones.refresh": "Refresh in %s"
 }

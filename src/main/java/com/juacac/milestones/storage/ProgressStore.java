@@ -221,14 +221,73 @@ public final class ProgressStore {
 		return List.copyOf(world.activeWeeklyQuests);
 	}
 
+	public List<String> activeCategoryQuests(String categoryId) {
+		WorldProgress.CategoryRotation rotation = world.categoryRotations.get(categoryId);
+		return rotation == null || rotation.activeQuestIds == null ? List.of() : List.copyOf(rotation.activeQuestIds);
+	}
+
+	public long nextCategoryRotationAt(String categoryId) {
+		WorldProgress.CategoryRotation rotation = world.categoryRotations.get(categoryId);
+		return rotation == null ? 0 : rotation.nextRotationAt;
+	}
+
+	public boolean rotateCategoryQuests(String categoryId, long now, long intervalMillis, List<String> pool, int count) {
+		if (intervalMillis <= 0) {
+			return false;
+		}
+		if (world.categoryRotations == null) {
+			world.categoryRotations = new HashMap<>();
+		}
+		WorldProgress.CategoryRotation rotation = world.categoryRotations.computeIfAbsent(categoryId, ignored -> new WorldProgress.CategoryRotation());
+		if (rotation.activeQuestIds == null) {
+			rotation.activeQuestIds = new ArrayList<>();
+		}
+		boolean firstRotation = rotation.nextRotationAt <= 0;
+		boolean intervalChanged = rotation.intervalMillis != intervalMillis;
+		List<String> uniquePool = pool.stream().distinct().toList();
+		Set<String> poolIds = new java.util.HashSet<>(uniquePool);
+		int targetCount = Math.min(Math.max(0, count), uniquePool.size());
+		boolean selectionChanged = rotation.activeQuestIds.size() != targetCount
+				|| rotation.activeQuestIds.stream().anyMatch(questId -> !poolIds.contains(questId));
+		boolean immediateRotation = firstRotation || intervalChanged || selectionChanged;
+		if (!immediateRotation && now < rotation.nextRotationAt) {
+			return false;
+		}
+
+		long cycleStart;
+		if (immediateRotation) {
+			cycleStart = now;
+			rotation.nextRotationAt = now + intervalMillis;
+		} else {
+			cycleStart = rotation.nextRotationAt + ((now - rotation.nextRotationAt) / intervalMillis) * intervalMillis;
+			rotation.nextRotationAt = cycleStart + intervalMillis;
+		}
+		List<String> candidates = new ArrayList<>(uniquePool);
+		Collections.shuffle(candidates, new Random());
+		List<String> selected = candidates.stream().limit(Math.max(0, count)).toList();
+		Set<String> resetIds = new java.util.HashSet<>(rotation.activeQuestIds);
+		resetIds.addAll(selected);
+		resetRotatingProgress(resetIds);
+		rotation.intervalMillis = intervalMillis;
+		rotation.activeQuestIds = new ArrayList<>(selected);
+		save();
+		return true;
+	}
+
 	public boolean rotateWeeklyQuests(String rotationKey, List<String> pool, int count) {
+		return rotateWeeklyQuests(rotationKey, pool, count, Set.of());
+	}
+
+	public boolean rotateWeeklyQuests(String rotationKey, List<String> pool, int count, Set<String> timedQuestIds) {
 		if (rotationKey.equals(world.weeklyRotationKey)) {
 			return false;
 		}
 		List<String> candidates = new java.util.ArrayList<>(pool);
 		Collections.shuffle(candidates, new Random(rotationKey.hashCode()));
 		List<String> selected = candidates.stream().limit(Math.max(0, count)).toList();
-		resetWeeklyProgress(new java.util.HashSet<>(world.activeWeeklyQuests));
+		Set<String> resetIds = new java.util.HashSet<>(world.activeWeeklyQuests);
+		resetIds.removeAll(timedQuestIds);
+		resetRotatingProgress(resetIds);
 		world.weeklyRotationKey = rotationKey;
 		world.activeWeeklyQuests = new java.util.ArrayList<>(selected);
 		save();
@@ -322,13 +381,26 @@ public final class ProgressStore {
 			source.globalRewardDefinitions.forEach((key, rewards) -> world.globalRewardDefinitions.put(key, new ArrayList<>(rewards)));
 		}
 		world.globalRewardSerial = source.globalRewardSerial;
+		if (source.categoryRotations != null) {
+			source.categoryRotations.forEach((categoryId, sourceRotation) -> {
+				if (sourceRotation != null) {
+					WorldProgress.CategoryRotation rotation = new WorldProgress.CategoryRotation();
+					rotation.intervalMillis = sourceRotation.intervalMillis;
+					rotation.nextRotationAt = sourceRotation.nextRotationAt;
+					if (sourceRotation.activeQuestIds != null) {
+						rotation.activeQuestIds.addAll(sourceRotation.activeQuestIds);
+					}
+					world.categoryRotations.put(categoryId, rotation);
+				}
+			});
+		}
 		world.weeklyRotationKey = source.weeklyRotationKey;
 		if (source.activeWeeklyQuests != null) {
 			world.activeWeeklyQuests.addAll(source.activeWeeklyQuests);
 		}
 	}
 
-	private void resetWeeklyProgress(Set<String> questIds) {
+	private void resetRotatingProgress(Set<String> questIds) {
 		for (String questId : questIds) {
 			world.globalProgress.remove(questId);
 			world.completedGlobal.remove(questId);

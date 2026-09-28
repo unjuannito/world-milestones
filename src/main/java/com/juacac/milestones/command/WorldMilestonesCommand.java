@@ -325,7 +325,7 @@ public final class WorldMilestonesCommand {
 	}
 
 	private static boolean visibleTo(QuestDefinition quest, CommandSourceStack source) {
-		if (quest.weekly && (!ConfigManager.weeklyEnabled() || !TemplateMod.progress().activeWeeklyQuests().contains(quest.id))) {
+		if (!ConfigManager.isQuestActive(quest)) {
 			return false;
 		}
 		if ((quest.hidden || "operator".equalsIgnoreCase(quest.visibility)) && !hasPermissionLevel(source, 2)) {

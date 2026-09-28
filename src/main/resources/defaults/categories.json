@@ -1,0 +1,54 @@
+[
+  {
+    "id": "exploration",
+    "name": "Exploration",
+    "description": "Discoveries and milestones from exploring the world.",
+    "icon": "minecraft:map",
+    "color": "#55FF55",
+    "order": 0,
+    "visible": true,
+    "requiredPermissionLevel": 0
+  },
+  {
+    "id": "semanal",
+    "name": "Semanal",
+    "description": "Missions that rotate every week.",
+    "icon": "minecraft:clock",
+    "color": "#55AAFF",
+    "order": 1,
+    "rotation_interval": "7d",
+    "active_quest_count": 1,
+    "visible": true,
+    "requiredPermissionLevel": 0
+  },
+  {
+    "id": "projects",
+    "name": "Projects",
+    "description": "Collaborative work in progress.",
+    "icon": "minecraft:crafting_table",
+    "color": "#FFAA00",
+    "order": 2,
+    "visible": true,
+    "requiredPermissionLevel": 0
+  },
+  {
+    "id": "world",
+    "name": "World Milestones",
+    "description": "Grandes hitos que cambian el mundo.",
+    "icon": "minecraft:grass_block",
+    "color": "#55FF55",
+    "order": 2,
+    "visible": true,
+    "requiredPermissionLevel": 0
+  },
+  {
+    "id": "projects",
+    "name": "Projects",
+    "description": "Collaborative work in progress.",
+    "icon": "minecraft:crafting_table",
+    "color": "#FFAA00",
+    "order": 3,
+    "visible": true,
+    "requiredPermissionLevel": 0
+  }
+]
