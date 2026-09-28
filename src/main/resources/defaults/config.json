@@ -1,4 +1,6 @@
 {
   "schema_version": 1,
-  "sync_on_join": true
+  "sync_on_join": true,
+  "weekly_enabled": true,
+  "weekly_count": 3
 }

@@ -10,8 +10,10 @@ import com.juacac.milestones.config.ConfigManager;
 import com.juacac.milestones.network.MilestoneSnapshotPayload;
 import com.juacac.milestones.quest.QuestDefinition;
 import com.juacac.milestones.storage.ProgressStore;
+import com.juacac.milestones.tracking.AutomaticProgressTracker;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -40,7 +42,12 @@ public class TemplateMod implements ModInitializer {
 		ConfigManager.reload();
 		PayloadTypeRegistry.clientboundPlay().register(MilestoneSnapshotPayload.TYPE, MilestoneSnapshotPayload.CODEC);
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> WorldMilestonesCommand.register(dispatcher));
-		ServerLifecycleEvents.SERVER_STARTED.register(server -> progressStore = ProgressStore.load(server));
+		AutomaticProgressTracker.register();
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+			progressStore = ProgressStore.load(server);
+			ConfigManager.updateWeeklyRotation(server);
+		});
+		ServerTickEvents.END_SERVER_TICK.register(ConfigManager::updateWeeklyRotation);
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			if (progressStore != null) {
 				progressStore.save();
@@ -51,6 +58,7 @@ public class TemplateMod implements ModInitializer {
 			if (ConfigManager.syncOnJoin()) {
 				sendSnapshot(handler.player, false);
 			}
+			AutomaticProgressTracker.onJoin(handler.player);
 		});
 	}
 
@@ -84,6 +92,9 @@ public class TemplateMod implements ModInitializer {
 		JsonObject sectionProgress = new JsonObject();
 		JsonArray completed = new JsonArray();
 		for (QuestDefinition quest : ConfigManager.quests().values().stream().sorted(Comparator.comparingInt(value -> value.order)).toList()) {
+			if (quest.weekly && (!ConfigManager.weeklyEnabled() || !progress().activeWeeklyQuests().contains(quest.id))) {
+				continue;
+			}
 			boolean operatorOnly = quest.hidden || "operator".equalsIgnoreCase(quest.visibility);
 			CategoryDefinition category = ConfigManager.categories().get(quest.category);
 			if ((operatorOnly && !hasPermissionLevel(player, 2)) || category == null

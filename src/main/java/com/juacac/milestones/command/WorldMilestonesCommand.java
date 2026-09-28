@@ -12,6 +12,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -30,25 +31,64 @@ public final class WorldMilestonesCommand {
 		return Commands.literal(name)
 				.executes(context -> list(context.getSource()))
 					.then(Commands.literal("list").executes(context -> list(context.getSource())))
-					.then(Commands.literal("reload").requires(source -> hasPermissionLevel(source, 2)).executes(context -> reload(context.getSource())))
+					.then(Commands.literal("reload").requires(WorldMilestonesCommand::hasAdminPermission).executes(context -> reload(context.getSource())))
 					.then(Commands.literal("open").executes(context -> open(context.getSource())))
 					.then(Commands.literal("info")
 							.then(Commands.argument("quest", StringArgumentType.greedyString())
 									.executes(context -> info(context.getSource(), StringArgumentType.getString(context, "quest")))))
-					.then(Commands.literal("complete").requires(source -> hasPermissionLevel(source, 2))
+					.then(Commands.literal("complete").requires(WorldMilestonesCommand::hasAdminPermission)
 							.then(Commands.argument("quest", StringArgumentType.greedyString())
 									.executes(context -> complete(context.getSource(), StringArgumentType.getString(context, "quest")))))
-					.then(Commands.literal("reset").requires(source -> hasPermissionLevel(source, 2))
+					.then(Commands.literal("reset").requires(WorldMilestonesCommand::hasAdminPermission)
 							.then(Commands.argument("quest", StringArgumentType.greedyString())
 									.executes(context -> reset(context.getSource(), StringArgumentType.getString(context, "quest")))))
-					.then(Commands.literal("progress").requires(source -> hasPermissionLevel(source, 2))
+					.then(Commands.literal("progress").requires(WorldMilestonesCommand::hasAdminPermission)
 							.then(Commands.argument("quest", StringArgumentType.word())
 									.then(Commands.argument("amount", LongArgumentType.longArg(0))
 										.executes(context -> progress(context.getSource(), StringArgumentType.getString(context, "quest"), LongArgumentType.getLong(context, "amount"))))))
-					.then(Commands.literal("section").requires(source -> hasPermissionLevel(source, 2))
+					.then(Commands.literal("section").requires(WorldMilestonesCommand::hasAdminPermission)
 							.then(Commands.argument("quest", StringArgumentType.word())
 									.then(Commands.argument("section", StringArgumentType.word())
-											.executes(context -> completeSection(context.getSource(), StringArgumentType.getString(context, "quest"), StringArgumentType.getString(context, "section"))))));
+										.executes(context -> completeSection(context.getSource(), StringArgumentType.getString(context, "quest"), StringArgumentType.getString(context, "section")))))
+					.then(Commands.literal("admin").requires(source -> hasPermissionLevel(source, 2))
+							.then(Commands.literal("add")
+									.then(Commands.argument("player", EntityArgument.player())
+											.executes(context -> addAdmin(context.getSource(), EntityArgument.getPlayer(context, "player")))))
+							.then(Commands.literal("remove")
+									.then(Commands.argument("player", EntityArgument.player())
+											.executes(context -> removeAdmin(context.getSource(), EntityArgument.getPlayer(context, "player")))))
+							.then(Commands.literal("list").executes(context -> listAdmins(context.getSource()))));
+	}
+
+	private static int addAdmin(CommandSourceStack source, ServerPlayer player) {
+		if (!TemplateMod.progress().addMilestonesAdmin(player.getUUID())) {
+			source.sendFailure(Component.literal(player.getGameProfile().name() + " is already a milestones-admin."));
+			return 0;
+		}
+		source.sendSuccess(() -> Component.literal("Added " + player.getGameProfile().name() + " as a milestones-admin."), true);
+		return 1;
+	}
+
+	private static int removeAdmin(CommandSourceStack source, ServerPlayer player) {
+		if (!TemplateMod.progress().removeMilestonesAdmin(player.getUUID())) {
+			source.sendFailure(Component.literal(player.getGameProfile().name() + " is not a milestones-admin."));
+			return 0;
+		}
+		source.sendSuccess(() -> Component.literal("Removed " + player.getGameProfile().name() + " as a milestones-admin."), true);
+		return 1;
+	}
+
+	private static int listAdmins(CommandSourceStack source) {
+		var admins = TemplateMod.progress().milestonesAdmins();
+		if (admins.isEmpty()) {
+			source.sendSuccess(() -> Component.literal("No milestones-admins are configured."), false);
+			return 0;
+		}
+		for (var id : admins) {
+			String name = source.getServer().getProfileCache().get(id).map(profile -> profile.name()).orElse(id.toString());
+			source.sendSuccess(() -> Component.literal(name + " [" + id + "]"), false);
+		}
+		return admins.size();
 	}
 
 	private static int list(CommandSourceStack source) {
@@ -69,6 +109,7 @@ public final class WorldMilestonesCommand {
 
 	private static int reload(CommandSourceStack source) {
 		ConfigManager.reload();
+		ConfigManager.updateWeeklyRotation(source.getServer());
 		source.getServer().getPlayerList().getPlayers().forEach(player -> TemplateMod.sendSnapshot(player, false));
 		source.sendSuccess(() -> Component.literal("Loaded " + ConfigManager.categories().size() + " categories and " + ConfigManager.quests().size() + " quests."), true);
 		return 1;
@@ -115,7 +156,7 @@ public final class WorldMilestonesCommand {
 		}
 		progress.setProgress(quest, player, quest.requiredProgress);
 		completeRequiredSections(quest, player, progress);
-		grantRewards(quest, player);
+		grantRewardsForScope(quest, quest.rewards, quest.id, player);
 		source.sendSuccess(() -> Component.literal("Completed: " + quest.name), true);
 		TemplateMod.syncProgress(quest, player);
 		return 1;
@@ -143,7 +184,7 @@ public final class WorldMilestonesCommand {
 		store.setProgress(quest, player, amount);
 		if (amount >= quest.requiredProgress && store.markCompleted(quest, player)) {
 			completeRequiredSections(quest, player, store);
-			grantRewards(quest, player);
+			grantRewardsForScope(quest, quest.rewards, quest.id, player);
 			source.sendSuccess(() -> Component.literal("Completed: " + quest.name), true);
 		} else {
 			source.sendSuccess(() -> Component.literal("Set " + quest.id + " progress to " + amount + "/" + quest.requiredProgress), true);
@@ -170,12 +211,12 @@ public final class WorldMilestonesCommand {
 		}
 		store.setSectionProgress(quest, section, player, section.requiredProgress);
 		if (store.markSectionRewarded(quest, section, player)) {
-			grantRewards(section.rewards, quest.id + "/" + section.id, player);
+			grantRewardsForScope(quest, section.rewards, quest.id + "/" + section.id, player);
 		}
 		source.sendSuccess(() -> Component.literal("Completed section: " + section.name), true);
 		if (meetsSectionMode(quest, store, player) && store.markCompleted(quest, player)) {
 			store.setProgress(quest, player, quest.requiredProgress);
-			grantRewards(quest, player);
+			grantRewardsForScope(quest, quest.rewards, quest.id, player);
 			source.sendSuccess(() -> Component.literal("Completed: " + quest.name), true);
 		}
 		TemplateMod.syncProgress(quest, player);
@@ -207,10 +248,28 @@ public final class WorldMilestonesCommand {
 			if (section.required) {
 				store.setSectionProgress(quest, section, player, section.requiredProgress);
 				if (store.markSectionRewarded(quest, section, player)) {
-					grantRewards(section.rewards, quest.id + "/" + section.id, player);
+					grantRewardsForScope(quest, section.rewards, quest.id + "/" + section.id, player);
 				}
 			}
 		}
+	}
+
+	public static void applyAutomaticProgress(QuestDefinition quest, ServerPlayer player, long amount) {
+		ProgressStore store = TemplateMod.progress();
+		if (store.isCompleted(quest, player)) {
+			return;
+		}
+		long updated = Math.max(store.getProgress(quest, player), Math.max(0, amount));
+		if (updated == store.getProgress(quest, player)) {
+			return;
+		}
+		store.setProgress(quest, player, updated);
+		if (updated >= quest.requiredProgress && store.markCompleted(quest, player)) {
+			completeRequiredSections(quest, player, store);
+			grantRewardsForScope(quest, quest.rewards, quest.id, player);
+			player.sendSystemMessage(Component.literal("Milestone completed: " + quest.name));
+		}
+		TemplateMod.syncProgress(quest, player);
 	}
 
 	private static QuestDefinition findQuest(CommandSourceStack source, String id) {
@@ -225,7 +284,20 @@ public final class WorldMilestonesCommand {
 		grantRewards(quest.rewards, quest.id, player);
 	}
 
+	private static void grantRewardsForScope(QuestDefinition quest, java.util.List<com.google.gson.JsonObject> rewards, String sourceId, ServerPlayer actor) {
+		if (quest.progressScope == QuestDefinition.ProgressScope.GLOBAL) {
+			for (ServerPlayer player : actor.level().getServer().getPlayerList().getPlayers()) {
+				grantRewards(rewards, sourceId, player);
+			}
+		} else {
+			grantRewards(rewards, sourceId, actor);
+		}
+	}
+
 	private static boolean visibleTo(QuestDefinition quest, CommandSourceStack source) {
+		if (quest.weekly && (!ConfigManager.weeklyEnabled() || !TemplateMod.progress().activeWeeklyQuests().contains(quest.id))) {
+			return false;
+		}
 		if ((quest.hidden || "operator".equalsIgnoreCase(quest.visibility)) && !hasPermissionLevel(source, 2)) {
 			return false;
 		}
@@ -238,6 +310,16 @@ public final class WorldMilestonesCommand {
 			return true;
 		}
 		return source.getEntity() instanceof ServerPlayer player && TemplateMod.hasPermissionLevel(player, permissionLevel);
+	}
+
+	private static boolean hasAdminPermission(CommandSourceStack source) {
+		if (source.getEntity() == null) {
+			return true;
+		}
+		if (!(source.getEntity() instanceof ServerPlayer player)) {
+			return false;
+		}
+		return TemplateMod.hasPermissionLevel(player, 2) || TemplateMod.progress().isMilestonesAdmin(player.getUUID());
 	}
 
 	private static void grantRewards(java.util.List<com.google.gson.JsonObject> rewards, String sourceId, ServerPlayer player) {

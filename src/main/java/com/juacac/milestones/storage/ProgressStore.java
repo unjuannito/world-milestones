@@ -11,7 +11,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 public final class ProgressStore {
@@ -124,6 +128,69 @@ public final class ProgressStore {
 		return added;
 	}
 
+	public boolean isMilestonesAdmin(UUID playerId) {
+		return world.milestonesAdmins.contains(playerId.toString());
+	}
+
+	public boolean addMilestonesAdmin(UUID playerId) {
+		boolean added = world.milestonesAdmins.add(playerId.toString());
+		if (added) {
+			save();
+		}
+		return added;
+	}
+
+	public boolean removeMilestonesAdmin(UUID playerId) {
+		boolean removed = world.milestonesAdmins.remove(playerId.toString());
+		if (removed) {
+			save();
+		}
+		return removed;
+	}
+
+	public Set<UUID> milestonesAdmins() {
+		return world.milestonesAdmins.stream().map(UUID::fromString).collect(java.util.stream.Collectors.toUnmodifiableSet());
+	}
+
+	public long getAutomaticCount(UUID playerId, String counter) {
+		return players.getOrDefault(playerId, new PlayerProgress()).automaticCounts.getOrDefault(counter, 0L);
+	}
+
+	public void incrementAutomaticCount(UUID playerId, String counter) {
+		PlayerProgress progress = players.computeIfAbsent(playerId, ignored -> new PlayerProgress());
+		progress.automaticCounts.merge(counter, 1L, Long::sum);
+		save();
+	}
+
+	public long getAutomaticBaseline(UUID playerId, String key) {
+		return players.getOrDefault(playerId, new PlayerProgress()).automaticBaselines.getOrDefault(key, -1L);
+	}
+
+	public void setAutomaticBaseline(UUID playerId, String key, long amount) {
+		PlayerProgress progress = players.computeIfAbsent(playerId, ignored -> new PlayerProgress());
+		if (progress.automaticBaselines.putIfAbsent(key, amount) == null) {
+			save();
+		}
+	}
+
+	public List<String> activeWeeklyQuests() {
+		return List.copyOf(world.activeWeeklyQuests);
+	}
+
+	public boolean rotateWeeklyQuests(String rotationKey, List<String> pool, int count) {
+		if (rotationKey.equals(world.weeklyRotationKey)) {
+			return false;
+		}
+		List<String> candidates = new java.util.ArrayList<>(pool);
+		Collections.shuffle(candidates, new Random(rotationKey.hashCode()));
+		List<String> selected = candidates.stream().limit(Math.max(0, count)).toList();
+		resetWeeklyProgress(new java.util.HashSet<>(world.activeWeeklyQuests));
+		world.weeklyRotationKey = rotationKey;
+		world.activeWeeklyQuests = new java.util.ArrayList<>(selected);
+		save();
+		return true;
+	}
+
 	public void reset(QuestDefinition quest, ServerPlayer player) {
 		for (QuestDefinition.Section section : quest.sections) {
 			String key = sectionKey(quest, section);
@@ -195,6 +262,31 @@ public final class ProgressStore {
 		world.completedTeams.addAll(source.completedTeams);
 		world.rewardedGlobalSections.addAll(source.rewardedGlobalSections);
 		world.rewardedTeamSections.addAll(source.rewardedTeamSections);
+		world.milestonesAdmins.addAll(source.milestonesAdmins);
+		world.weeklyRotationKey = source.weeklyRotationKey;
+		if (source.activeWeeklyQuests != null) {
+			world.activeWeeklyQuests.addAll(source.activeWeeklyQuests);
+		}
+	}
+
+	private void resetWeeklyProgress(Set<String> questIds) {
+		for (String questId : questIds) {
+			world.globalProgress.remove(questId);
+			world.completedGlobal.remove(questId);
+			world.teamProgress.keySet().removeIf(key -> key.startsWith(questId + "@"));
+			world.completedTeams.removeIf(key -> key.startsWith(questId + "@"));
+			world.globalSectionProgress.keySet().removeIf(key -> key.startsWith(questId + "#"));
+			world.rewardedGlobalSections.removeIf(key -> key.startsWith(questId + "#"));
+			world.teamSectionProgress.keySet().removeIf(key -> key.startsWith(questId + "@"));
+			world.rewardedTeamSections.removeIf(key -> key.startsWith(questId + "@"));
+			for (PlayerProgress player : players.values()) {
+				player.progress.remove(questId);
+				player.completed.remove(questId);
+				player.sectionProgress.keySet().removeIf(key -> key.startsWith(questId + "#"));
+				player.rewardedSections.removeIf(key -> key.startsWith(questId + "#"));
+				player.automaticBaselines.keySet().removeIf(key -> key.startsWith(questId + "#"));
+			}
+		}
 	}
 
 	private static final class StoredData {

@@ -2,16 +2,22 @@ package com.juacac.milestones.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.SerializedName;
 import com.juacac.milestones.TemplateMod;
 import com.juacac.milestones.category.CategoryDefinition;
 import com.juacac.milestones.quest.QuestDefinition;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.IsoFields;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -21,6 +27,8 @@ public final class ConfigManager {
 	private static Map<String, CategoryDefinition> categories = Map.of();
 	private static Map<String, QuestDefinition> quests = Map.of();
 	private static boolean syncOnJoin = true;
+	private static boolean weeklyEnabled = true;
+	private static int weeklyCount = 3;
 
 	private ConfigManager() {
 	}
@@ -37,10 +45,13 @@ public final class ConfigManager {
 			copyDefault("defaults/quests/example.json", questsPath.resolve("example.json"));
 			copyDefault("defaults/quests/spawn.json", questsPath.resolve("spawn.json"));
 			copyDefault("defaults/quests/nether_hub.json", questsPath.resolve("nether_hub.json"));
+			copyDefault("defaults/quests/weekly_miner.json", questsPath.resolve("weekly_miner.json"));
 			Path settingsPath = ROOT.resolve("config.json");
 			copyDefault("defaults/config.json", settingsPath);
 			GlobalSettings settings = GSON.fromJson(Files.readString(settingsPath), GlobalSettings.class);
 			syncOnJoin = settings == null || settings.syncOnJoin;
+			weeklyEnabled = settings == null || settings.weeklyEnabled;
+			weeklyCount = settings == null ? 3 : Math.max(0, settings.weeklyCount);
 			categories = loadDirectory(categoriesPath, CategoryDefinition.class, "category");
 			quests = loadDirectory(questsPath, QuestDefinition.class, "quest");
 			TemplateMod.LOGGER.info("Loaded {} categories and {} quests", categories.size(), quests.size());
@@ -63,6 +74,30 @@ public final class ConfigManager {
 
 	public static boolean syncOnJoin() {
 		return syncOnJoin;
+	}
+
+	public static boolean weeklyEnabled() {
+		return weeklyEnabled;
+	}
+
+	public static int weeklyCount() {
+		return weeklyCount;
+	}
+
+	public static List<QuestDefinition> weeklyPool() {
+		return quests.values().stream().filter(quest -> quest.weekly).sorted(Comparator.comparing(quest -> quest.id)).toList();
+	}
+
+	public static void updateWeeklyRotation(MinecraftServer server) {
+		if (!weeklyEnabled) {
+			return;
+		}
+		LocalDate date = LocalDate.now(ZoneOffset.UTC);
+		String weekKey = date.get(IsoFields.WEEK_BASED_YEAR) + "-W" + date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+		boolean changed = TemplateMod.progress().rotateWeeklyQuests(weekKey, weeklyPool().stream().map(quest -> quest.id).toList(), weeklyCount);
+		if (changed) {
+			server.getPlayerList().getPlayers().forEach(player -> TemplateMod.sendSnapshot(player, false));
+		}
 	}
 
 	private static <T> Map<String, T> loadDirectory(Path directory, Class<T> type, String kind) throws IOException {
@@ -103,6 +138,11 @@ public final class ConfigManager {
 	}
 
 	private static final class GlobalSettings {
+		@SerializedName("sync_on_join")
 		private boolean syncOnJoin = true;
+		@SerializedName("weekly_enabled")
+		private boolean weeklyEnabled = true;
+		@SerializedName("weekly_count")
+		private int weeklyCount = 3;
 	}
 }

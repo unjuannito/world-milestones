@@ -16,6 +16,7 @@ public final class QuestDefinition {
 	public String visibility = "public";
 	public boolean hidden;
 	public boolean repeatable;
+	public boolean weekly;
 	@SerializedName("required_progress")
 	public long requiredProgress = 1;
 	@SerializedName("progress_scope")
@@ -25,6 +26,7 @@ public final class QuestDefinition {
 	@SerializedName("required_sections")
 	public int requiredSections;
 	public int order;
+	public List<JsonObject> automatic = new ArrayList<>();
 	public List<JsonObject> requirements = new ArrayList<>();
 	public List<JsonObject> rewards = new ArrayList<>();
 	public List<Section> sections = new ArrayList<>();

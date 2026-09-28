@@ -2,6 +2,7 @@ package com.juacac.milestones.storage;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,4 +15,7 @@ public final class WorldProgress {
 	public Set<String> completedTeams = new HashSet<>();
 	public Set<String> rewardedGlobalSections = new HashSet<>();
 	public Set<String> rewardedTeamSections = new HashSet<>();
+	public Set<String> milestonesAdmins = new HashSet<>();
+	public String weeklyRotationKey = "";
+	public java.util.List<String> activeWeeklyQuests = new ArrayList<>();
 }
