@@ -41,7 +41,7 @@ public final class WorldMilestonesScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
 		JsonArray categories = array("categories");
-		graphics.fill(0, 0, width, height, 0xA9101718);
+		graphics.fill(0, 0, width, height, 0xC9101718);
 		float scale = uiScale();
 		int marginX = Math.max(4, Math.round(12 * scale));
 		int tabSize = Math.max(28, Math.round(42 * scale));
@@ -49,26 +49,30 @@ public final class WorldMilestonesScreen extends Screen {
 		int panelLeft = marginX;
 		int panelRight = width - marginX;
 		int panelTop = tabY + tabSize - Math.max(4, Math.round(6 * scale));
-		int panelBottom = height - marginX;
+		int panelBottom = Math.min(height - marginX, panelTop + desiredPanelHeight(scale));
 		int border = Math.max(2, Math.round(3 * scale));
 		graphics.fill(panelLeft + 2, panelTop + 3, panelRight + 2, panelBottom + 3, 0xFF101010);
-		graphics.fill(panelLeft, panelTop, panelRight, panelBottom, 0xFF202020);
-		graphics.fill(panelLeft + border, panelTop + border, panelRight - border, panelBottom - border, 0xFFB8B8B8);
-		graphics.fill(panelLeft + border + 2, panelTop + border + 2, panelRight - border - 2, panelBottom - border - 2, 0xFFE1E1E1);
+		graphics.fill(panelLeft, panelTop, panelRight, panelBottom, 0xFF101112);
+		graphics.fill(panelLeft + border, panelTop + border, panelRight - border, panelBottom - border, 0xFF9C8C6E);
+		graphics.fill(panelLeft + border + 2, panelTop + border + 2, panelRight - border - 2, panelBottom - border - 2, 0xFF211F1B);
 
 		int contentLeft = panelLeft + Math.round(12 * scale);
 		int contentRight = panelRight - Math.round(12 * scale);
-		int headerY = panelTop + Math.round(7 * scale);
-		JsonObject category = findCategory(selectedCategory);
-		if (category != null) {
-			graphics.text(font, string(category, "name", selectedCategory), contentLeft, headerY, 0xFF333333);
-		}
-
-		int contentTop = panelTop + Math.round(34 * scale);
+		int contentTop = panelTop + Math.round(10 * scale);
 		int contentBottom = panelBottom - Math.round(10 * scale);
-		graphics.fill(contentLeft, contentTop, contentRight, contentBottom, 0xFF514638);
+		graphics.fill(contentLeft, contentTop, contentRight, contentBottom, 0xFF292722);
 		int separatorX = contentLeft + Math.max(Math.round(110 * scale), (contentRight - contentLeft) / 3);
-		graphics.fill(separatorX, contentTop, separatorX + Math.max(2, Math.round(3 * scale)), contentBottom, 0xFF252525);
+		int gradientWidth = contentRight - separatorX;
+		for (int band = 0; band < 12; band++) {
+			int bandLeft = separatorX + gradientWidth * band / 12;
+			int bandRight = separatorX + gradientWidth * (band + 1) / 12;
+			int shade = 0x24 + band * 2;
+			graphics.fill(bandLeft, contentTop, bandRight, contentBottom, 0xFF000000 | shade << 16 | (shade - 4) << 8 | (shade - 10));
+		}
+		for (int textureY = contentTop + Math.round(8 * scale); textureY < contentBottom; textureY += Math.max(12, Math.round(18 * scale))) {
+			graphics.fill(contentLeft + Math.round(5 * scale), textureY, contentRight - Math.round(5 * scale), textureY + 1, 0x12000000);
+		}
+		graphics.fill(separatorX, contentTop, separatorX + Math.max(2, Math.round(3 * scale)), contentBottom, 0xFF111110);
 		if (selectedQuest == null) {
 			graphics.centeredText(font, Component.translatable("gui.worldmilestones.empty"),
 					(separatorX + contentRight) / 2, (contentTop + contentBottom) / 2, 0xFFE1E1E1);
@@ -77,6 +81,7 @@ public final class WorldMilestonesScreen extends Screen {
 					contentTop + Math.round(12 * scale), contentBottom, scale);
 		}
 		super.extractRenderState(graphics, mouseX, mouseY, delta);
+		drawQuestRows(graphics, scale, panelTop, panelBottom);
 		drawCategoryTabIcons(graphics, categories, panelLeft, tabY, tabSize, scale);
 	}
 
@@ -113,15 +118,15 @@ public final class WorldMilestonesScreen extends Screen {
 		float scale = uiScale();
 		int marginX = Math.max(4, Math.round(12 * scale));
 		int panelTop = Math.max(4, Math.round(6 * scale)) + Math.max(28, Math.round(42 * scale)) - Math.max(4, Math.round(6 * scale));
-		int panelBottom = height - marginX;
+		int panelBottom = Math.min(height - marginX, panelTop + desiredPanelHeight(scale));
 		int contentLeft = marginX + Math.round(12 * scale);
 		int contentRight = width - marginX - Math.round(12 * scale);
-		int contentTop = panelTop + Math.round(34 * scale);
+		int contentTop = panelTop + Math.round(10 * scale);
 		int contentBottom = panelBottom - Math.round(10 * scale);
 		int separatorX = contentLeft + Math.max(Math.round(110 * scale), (contentRight - contentLeft) / 3);
 		int listWidth = separatorX - contentLeft - Math.round(8 * scale);
-		int rowHeight = Math.max(18, Math.round(25 * scale));
-		int buttonHeight = Math.max(16, Math.round(21 * scale));
+		int rowHeight = Math.max(26, Math.round(34 * scale));
+		int buttonHeight = Math.max(22, Math.round(28 * scale));
 		int maxRows = Math.max(1, (contentBottom - contentTop - Math.round(8 * scale)) / rowHeight);
 		JsonArray quests = array("quests");
 		int row = 0;
@@ -135,19 +140,61 @@ public final class WorldMilestonesScreen extends Screen {
 			}
 			String id = string(quest, "id", "");
 			String name = string(quest, "name", id);
-			long current = snapshot.has("progress") && snapshot.getAsJsonObject("progress").has(id)
-					? snapshot.getAsJsonObject("progress").get(id).getAsLong() : 0;
-			long required = Math.max(1, number(quest, "required_progress", 1));
-			String label = name + "  " + Math.min(current, required) + "/" + required;
 			int y = contentTop + Math.round(5 * scale) + row++ * rowHeight;
 			if (selectedQuest == null) {
 				selectedQuest = id;
 			}
-			addRenderableWidget(Button.builder(Component.literal(label), button -> {
+			addRenderableWidget(Button.builder(CommonComponents.EMPTY, button -> {
 				selectedQuest = id;
 				clearWidgets();
 				init();
 			}).bounds(contentLeft + Math.round(4 * scale), y, Math.max(buttonHeight * 3, listWidth - Math.round(8 * scale)), buttonHeight).build());
+		}
+	}
+
+	private void drawQuestRows(GuiGraphicsExtractor graphics, float scale, int panelTop, int panelBottom) {
+		if (selectedCategory == null) {
+			return;
+		}
+		int marginX = Math.max(4, Math.round(12 * scale));
+		int contentLeft = marginX + Math.round(12 * scale);
+		int contentRight = width - marginX - Math.round(12 * scale);
+		int contentTop = panelTop + Math.round(10 * scale);
+		int contentBottom = panelBottom - Math.round(10 * scale);
+		int separatorX = contentLeft + Math.max(Math.round(110 * scale), (contentRight - contentLeft) / 3);
+		int listWidth = separatorX - contentLeft - Math.round(8 * scale);
+		int rowHeight = Math.max(26, Math.round(34 * scale));
+		int buttonHeight = Math.max(22, Math.round(28 * scale));
+		int maxRows = Math.max(1, (contentBottom - contentTop - Math.round(8 * scale)) / rowHeight);
+		int row = 0;
+		for (JsonElement element : array("quests")) {
+			JsonObject quest = element.getAsJsonObject();
+			if (!selectedCategory.equals(string(quest, "category", "")) || row >= maxRows) {
+				continue;
+			}
+			String id = string(quest, "id", "");
+			long current = progress(id);
+			long required = Math.max(1, number(quest, "required_progress", 1));
+			boolean completed = isCompleted(id) || current >= required;
+			int x = contentLeft + Math.round(4 * scale);
+			int y = contentTop + Math.round(5 * scale) + row++ * rowHeight;
+			int right = x + Math.max(buttonHeight * 3, listWidth - Math.round(8 * scale));
+			int bottom = y + buttonHeight;
+			boolean selected = id.equals(selectedQuest);
+			int fill = selected ? 0xFF554324 : completed ? 0xFF28362B : 0xFF33312D;
+			int edge = selected ? 0xFFE3B94F : completed ? 0xFF638C64 : 0xFF504C43;
+			graphics.fill(x, y, right, bottom, edge);
+			graphics.fill(x + 1, y + 1, right - 1, bottom - 1, fill);
+			graphics.item(itemStack(string(quest, "icon", "minecraft:book")), x + Math.round(4 * scale), y + (buttonHeight - 16) / 2);
+			int progressColor = completed ? 0xFF8DDB9C : selected ? 0xFFE8CA78 : 0xFFC3BFB3;
+			String progressText = Math.min(current, required) + "/" + required;
+			int progressWidth = font.width(progressText);
+			int textX = x + Math.round(24 * scale);
+			int textRight = right - Math.round(6 * scale) - progressWidth;
+			String name = string(quest, "name", id);
+			String clippedName = font.plainSubstrByWidth(name, Math.max(0, textRight - textX));
+			graphics.text(font, clippedName, textX, y + (buttonHeight - 9) / 2, completed ? 0xFFE5F3E6 : 0xFFF1EDE3);
+			graphics.text(font, progressText, right - Math.round(6 * scale) - progressWidth, y + (buttonHeight - 9) / 2, progressColor);
 		}
 	}
 
@@ -157,13 +204,15 @@ public final class WorldMilestonesScreen extends Screen {
 		for (int index = 0; index < categories.size(); index++) {
 			JsonObject category = categories.get(index).getAsJsonObject();
 			int tabX = x + index * (tabSize + gap);
-			if (selectedCategory != null && selectedCategory.equals(string(category, "id", ""))) {
-				graphics.fill(tabX, tabY, tabX + tabSize, tabY + 2, 0xFFFFD866);
-				graphics.fill(tabX, tabY, tabX + 2, tabY + tabSize, 0xFFFFD866);
-				graphics.fill(tabX + tabSize - 2, tabY, tabX + tabSize, tabY + tabSize, 0xFFFFD866);
-			}
+			boolean selected = selectedCategory != null && selectedCategory.equals(string(category, "id", ""));
+			graphics.fill(tabX, tabY, tabX + tabSize, tabY + tabSize, selected ? 0xFFE3B94F : 0xFF171819);
+			graphics.fill(tabX + 1, tabY + 1, tabX + tabSize - 1, tabY + tabSize - 1, selected ? 0xFF29251D : 0xFF30302D);
 			ItemStack icon = itemStack(string(category, "icon", "minecraft:book"));
 			graphics.item(icon, tabX + (tabSize - 16) / 2, tabY + (tabSize - 16) / 2);
+			if (selected) {
+				graphics.fill(tabX + Math.round(5 * scale), tabY + tabSize - Math.max(3, Math.round(4 * scale)),
+						tabX + tabSize - Math.round(5 * scale), tabY + tabSize - Math.max(1, Math.round(2 * scale)), 0xFFFFD866);
+			}
 		}
 	}
 
@@ -174,20 +223,28 @@ public final class WorldMilestonesScreen extends Screen {
 			return;
 		}
 		int textWidth = Math.max(80, right - left);
-		graphics.item(itemStack(string(quest, "icon", "minecraft:book")), left, top);
-		graphics.text(font, string(quest, "name", selectedQuest), left + 22, top + 4, 0xFFFFFFFF);
-		int y = drawWrapped(graphics, string(quest, "description", ""), left, top + 23, textWidth, 0xFFE2E2E2, scale);
-		long current = snapshot.has("progress") && snapshot.getAsJsonObject("progress").has(selectedQuest)
-				? snapshot.getAsJsonObject("progress").get(selectedQuest).getAsLong() : 0;
+		graphics.fill(left, top, left + Math.round(30 * scale), top + Math.round(30 * scale), 0xFF51452D);
+		graphics.fill(left + 1, top + 1, left + Math.round(30 * scale) - 1, top + Math.round(30 * scale) - 1, 0xFF25221C);
+		graphics.item(itemStack(string(quest, "icon", "minecraft:book")), left + Math.round(7 * scale), top + Math.round(7 * scale));
+		String title = string(quest, "name", selectedQuest).toUpperCase(java.util.Locale.ROOT);
+		String clippedTitle = font.plainSubstrByWidth(title, Math.max(0, textWidth - Math.round(42 * scale)));
+		graphics.text(font, clippedTitle, left + Math.round(38 * scale), top + Math.round(5 * scale), 0xFFFFD866);
+		int dividerY = top + Math.round(34 * scale);
+		graphics.fill(left, dividerY, left + textWidth, dividerY + 1, 0xFF776747);
+		int y = drawWrapped(graphics, string(quest, "description", ""), left, dividerY + Math.round(8 * scale), textWidth, 0xFFE2E0D8, scale);
+		y += Math.round(2 * scale);
+		graphics.text(font, Component.translatable("gui.worldmilestones.progress"), left, y, 0xFFFFD866);
+		y += Math.round(13 * scale);
+		long current = progress(selectedQuest);
 		long required = Math.max(1, number(quest, "required_progress", 1));
-		int barWidth = Math.max(50, textWidth - Math.round(52 * scale));
+		int barWidth = Math.max(50, textWidth - Math.round(48 * scale));
 		int filled = (int) (barWidth * Math.min(current, required) / required);
-		graphics.fill(left, y + 4, left + barWidth, y + 12, 0xFF393939);
-		graphics.fill(left, y + 4, left + filled, y + 12, 0xFF4E9B58);
-		graphics.text(font, Math.min(current, required) + "/" + required, left + barWidth + 5, y + 2, 0xFFFFFFFF);
-		y += Math.round(23 * scale);
-		boolean completed = array("completed").asList().stream().anyMatch(element -> selectedQuest.equals(element.getAsString()));
-		graphics.text(font, Component.translatable(completed ? "gui.worldmilestones.completed" : "gui.worldmilestones.in_progress"), left, y, completed ? 0xFF7FE09A : 0xFFE5D28A);
+		graphics.fill(left, y + 3, left + barWidth, y + 11, 0xFF171819);
+		graphics.fill(left, y + 3, left + filled, y + 11, 0xFFE0B442);
+		graphics.text(font, Math.min(current, required) + "/" + required, left + barWidth + Math.round(5 * scale), y + 1, 0xFFECE8DD);
+		y += Math.round(20 * scale);
+		boolean completed = isCompleted(selectedQuest) || current >= required;
+		graphics.text(font, Component.translatable(completed ? "gui.worldmilestones.completed" : "gui.worldmilestones.in_progress"), left, y, completed ? 0xFF7FE09A : 0xFFD0C9B9);
 		y += Math.round(16 * scale);
 		graphics.text(font, Component.translatable("gui.worldmilestones.sections"), left, y, 0xFFFFD866);
 		y += Math.round(13 * scale);
@@ -207,9 +264,9 @@ public final class WorldMilestonesScreen extends Screen {
 				}
 				long sectionRequired = Math.max(1, number(section, "required_progress", 1));
 				boolean sectionComplete = sectionCurrent >= sectionRequired;
-				String marker = sectionComplete ? "[x] " : "[ ] ";
+				String marker = sectionComplete ? "\u2713 " : "\u25cb ";
 				graphics.text(font, marker + string(section, "name", sectionId) + " "
-						+ Math.min(sectionCurrent, sectionRequired) + "/" + sectionRequired, left, y, 0xFFE4E8E4);
+						+ Math.min(sectionCurrent, sectionRequired) + "/" + sectionRequired, left, y, sectionComplete ? 0xFF8DDB9C : 0xFFD2D0C8);
 				y += Math.round(12 * scale);
 			}
 		}
@@ -241,6 +298,30 @@ public final class WorldMilestonesScreen extends Screen {
 			y += Math.round(10 * scale);
 		}
 		return y + Math.round(3 * scale);
+	}
+
+	private int desiredPanelHeight(float scale) {
+		int questCount = 0;
+		for (JsonElement element : array("quests")) {
+			if (selectedCategory != null && selectedCategory.equals(string(element.getAsJsonObject(), "category", ""))) {
+				questCount++;
+			}
+		}
+		JsonObject quest = findQuest(selectedQuest);
+		int sectionCount = quest != null && quest.has("sections") && quest.get("sections").isJsonArray()
+				? quest.getAsJsonArray("sections").size() : 0;
+		int listHeight = questCount * Math.max(26, Math.round(34 * scale)) + Math.round(30 * scale);
+		int detailHeight = Math.round((150 + sectionCount * 13) * scale);
+		return Math.max(Math.round(220 * scale), Math.max(listHeight, detailHeight));
+	}
+
+	private long progress(String questId) {
+		return snapshot.has("progress") && snapshot.getAsJsonObject("progress").has(questId)
+				? snapshot.getAsJsonObject("progress").get(questId).getAsLong() : 0;
+	}
+
+	private boolean isCompleted(String questId) {
+		return array("completed").asList().stream().anyMatch(element -> questId.equals(element.getAsString()));
 	}
 
 	private JsonObject findCategory(String id) {
@@ -293,7 +374,4 @@ public final class WorldMilestonesScreen extends Screen {
 		return object.has(key) ? object.get(key).getAsLong() : fallback;
 	}
 
-	private static boolean bool(JsonObject object, String key, boolean fallback) {
-		return object.has(key) ? object.get(key).getAsBoolean() : fallback;
-	}
 }

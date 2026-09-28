@@ -8,6 +8,7 @@
   "gui.worldmilestones.empty": "Ninguna misión seleccionada",
   "gui.worldmilestones.completed": "Completada",
   "gui.worldmilestones.in_progress": "En progreso",
+  "gui.worldmilestones.progress": "Progreso",
   "gui.worldmilestones.sections": "Secciones",
   "gui.worldmilestones.requirements": "Requisitos",
   "gui.worldmilestones.rewards": "Recompensas"
