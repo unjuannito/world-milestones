@@ -61,7 +61,7 @@ public final class WorldMilestonesScreen extends Screen {
 		int panelLeft = marginX;
 		int panelRight = width - marginX;
 		int panelTop = categoryPanelTop(tabY, tabSize, scale);
-		int panelBottom = Math.min(height - marginX, panelTop + desiredPanelHeight(scale));
+		int panelBottom = height - marginX;
 		int border = Math.max(2, Math.round(3 * scale));
 		graphics.fill(panelLeft + 2, panelTop + 3, panelRight + 2, panelBottom + 3, 0xFF101010);
 		graphics.fill(panelLeft, panelTop, panelRight, panelBottom, 0xFF101112);
@@ -133,7 +133,7 @@ public final class WorldMilestonesScreen extends Screen {
 		int tabY = Math.max(4, Math.round(6 * scale));
 		int tabSize = Math.max(28, Math.round(42 * scale));
 		int panelTop = categoryPanelTop(tabY, tabSize, scale);
-		int panelBottom = Math.min(height - marginX, panelTop + desiredPanelHeight(scale));
+		int panelBottom = height - marginX;
 		int contentLeft = marginX + Math.round(12 * scale);
 		int contentRight = width - marginX - Math.round(12 * scale);
 		int contentTop = panelTop + Math.round(10 * scale);
@@ -204,7 +204,7 @@ public final class WorldMilestonesScreen extends Screen {
 			int progressColor = completed ? 0xFF8DDB9C : selected ? 0xFFE8CA78 : 0xFFC3BFB3;
 			String progressText = Math.min(current, required) + "/" + required;
 			int progressWidth = font.width(progressText);
-			int textX = x + Math.round(24 * scale);
+			int textX = x + Math.round(28 * scale);
 			int textRight = right - Math.round(6 * scale) - progressWidth;
 			String name = string(quest, "name", id);
 			String clippedName = font.plainSubstrByWidth(name, Math.max(0, textRight - textX));
@@ -273,10 +273,12 @@ public final class WorldMilestonesScreen extends Screen {
 		int textWidth = Math.max(80, right - left);
 		graphics.fill(left, top, left + Math.round(30 * scale), top + Math.round(30 * scale), 0xFF51452D);
 		graphics.fill(left + 1, top + 1, left + Math.round(30 * scale) - 1, top + Math.round(30 * scale) - 1, 0xFF25221C);
-		graphics.item(itemStack(string(quest, "icon", "minecraft:book")), left + Math.round(7 * scale), top + Math.round(7 * scale));
+		int iconBoxSize = Math.round(30 * scale);
+		graphics.item(itemStack(string(quest, "icon", "minecraft:book")), left + (iconBoxSize - 16) / 2, top + (iconBoxSize - 16) / 2);
 		String title = string(quest, "name", selectedQuest).toUpperCase(java.util.Locale.ROOT);
-		String clippedTitle = font.plainSubstrByWidth(title, Math.max(0, textWidth - Math.round(42 * scale)));
-		graphics.text(font, clippedTitle, left + Math.round(38 * scale), top + Math.round(5 * scale), 0xFFFFD866);
+		int titleX = left + iconBoxSize + Math.round(8 * scale);
+		String clippedTitle = font.plainSubstrByWidth(title, Math.max(0, right - titleX));
+		graphics.text(font, clippedTitle, titleX, top + Math.round(5 * scale), 0xFFFFD866);
 		int dividerY = top + Math.round(34 * scale);
 		graphics.fill(left, dividerY, left + textWidth, dividerY + 1, 0xFF776747);
 		int y = drawWrapped(graphics, string(quest, "description", ""), left, dividerY + Math.round(8 * scale), textWidth, 0xFFE2E0D8, scale);
