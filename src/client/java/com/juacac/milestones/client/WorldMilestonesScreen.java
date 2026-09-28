@@ -40,7 +40,6 @@ public final class WorldMilestonesScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-		extractBackground(graphics, mouseX, mouseY, delta);
 		graphics.fill(0, 0, width, height, 0xA9101718);
 		graphics.centeredText(font, title, width / 2, 18, 0xFFFFFF);
 		if (selectedCategory == null) {
