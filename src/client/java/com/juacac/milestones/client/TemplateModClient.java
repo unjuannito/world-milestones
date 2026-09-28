@@ -17,6 +17,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.lwjgl.glfw.GLFW;
 
 public class TemplateModClient implements ClientModInitializer {
@@ -58,11 +60,15 @@ public class TemplateModClient implements ClientModInitializer {
 			if (screen instanceof InventoryScreen) {
 				int inventoryLeft = (screen.width - 176) / 2;
 				int inventoryTop = (screen.height - 166) / 2;
-				Button milestonesButton = Button.builder(Component.literal("✦"), button -> requestOpen(client))
-						.bounds(inventoryLeft - 24, inventoryTop + 5, 20, 20)
+				int buttonX = inventoryLeft - 24;
+				int buttonY = inventoryTop + 5;
+				Button milestonesButton = Button.builder(Component.empty(), button -> requestOpen(client))
+						.bounds(buttonX, buttonY, 20, 20)
 						.tooltip(Tooltip.create(Component.translatable("gui.worldmilestones.open")))
 						.build();
 				Screens.getWidgets(screen).add(milestonesButton);
+				ScreenEvents.afterExtract(screen).register((renderedScreen, graphics, mouseX, mouseY, tickDelta) ->
+						graphics.item(new ItemStack(Items.MOJANG_BANNER_PATTERN), buttonX + 2, buttonY + 2));
 			}
 		});
 	}
