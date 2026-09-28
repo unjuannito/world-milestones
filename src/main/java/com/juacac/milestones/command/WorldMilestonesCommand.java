@@ -32,6 +32,13 @@ public final class WorldMilestonesCommand {
 				.executes(context -> list(context.getSource()))
 					.then(Commands.literal("list").executes(context -> list(context.getSource())))
 					.then(Commands.literal("reload").requires(WorldMilestonesCommand::hasAdminPermission).executes(context -> reload(context.getSource())))
+					.then(Commands.literal("rotation").requires(WorldMilestonesCommand::hasAdminPermission)
+							.then(Commands.literal("reduce")
+									.then(Commands.argument("category", StringArgumentType.word())
+											.then(Commands.argument("duration", StringArgumentType.word())
+												.executes(context -> reduceRotation(context.getSource(),
+													StringArgumentType.getString(context, "category"),
+													StringArgumentType.getString(context, "duration")))))))
 					.then(Commands.literal("open").executes(context -> open(context.getSource())))
 					.then(Commands.literal("info")
 							.then(Commands.argument("quest", StringArgumentType.greedyString())
@@ -113,6 +120,34 @@ public final class WorldMilestonesCommand {
 		ConfigManager.updateWeeklyRotation(source.getServer());
 		source.getServer().getPlayerList().getPlayers().forEach(player -> TemplateMod.sendSnapshot(player, false));
 		source.sendSuccess(() -> Component.literal("Loaded " + ConfigManager.categories().size() + " categories and " + ConfigManager.quests().size() + " quests."), true);
+		return 1;
+	}
+
+	private static int reduceRotation(CommandSourceStack source, String categoryId, String duration) {
+		CategoryDefinition category = ConfigManager.categories().get(categoryId);
+		long reductionMillis = CategoryDefinition.parseDurationMillis(duration);
+		if (category == null || category.rotationIntervalMillis() <= 0) {
+			source.sendFailure(Component.literal("Category is not configured for timed rotation: " + categoryId));
+			return 0;
+		}
+		if (reductionMillis <= 0) {
+			source.sendFailure(Component.literal("Invalid duration. Use a positive value such as 30m, 2h, or 1d."));
+			return 0;
+		}
+		long nextRotationAt = TemplateMod.progress().reduceCategoryRotation(categoryId, reductionMillis, System.currentTimeMillis());
+		if (nextRotationAt < 0) {
+			source.sendFailure(Component.literal("The category rotation has not been initialized yet."));
+			return 0;
+		}
+		ConfigManager.updateWeeklyRotation(source.getServer());
+		source.getServer().getPlayerList().getPlayers().forEach(player -> TemplateMod.sendSnapshot(player, false));
+		if (nextRotationAt <= System.currentTimeMillis()) {
+			source.sendSuccess(() -> Component.literal("Rotation advanced for " + category.name + "; quests have been refreshed."), true);
+		} else {
+			long remainingSeconds = Math.max(0, (nextRotationAt - System.currentTimeMillis() + 999) / 1000);
+			source.sendSuccess(() -> Component.literal("Reduced " + category.name + " rotation by " + duration
+					+ "; " + remainingSeconds + " seconds remain."), true);
+		}
 		return 1;
 	}
 

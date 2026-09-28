@@ -3,7 +3,12 @@ package com.juacac.milestones.client;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.common.collect.ImmutableMultimap;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -11,7 +16,12 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ResolvableProfile;
+
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 public final class WorldMilestonesScreen extends Screen {
 	private static JsonObject snapshot = new JsonObject();
@@ -85,7 +95,7 @@ public final class WorldMilestonesScreen extends Screen {
 		super.extractRenderState(graphics, mouseX, mouseY, delta);
 		drawQuestRows(graphics, scale, panelTop, panelBottom);
 		drawCategoryTabIcons(graphics, categories, panelLeft, tabY, tabSize, scale);
-		drawRotationCountdown(graphics, panelLeft, tabY, tabSize, scale);
+		drawRotationCountdown(graphics, categories, panelLeft, tabY, tabSize, scale);
 	}
 
 	@Override
@@ -212,7 +222,7 @@ public final class WorldMilestonesScreen extends Screen {
 			boolean selected = selectedCategory != null && selectedCategory.equals(string(category, "id", ""));
 			graphics.fill(tabX, tabY, tabX + tabSize, tabY + tabSize, selected ? 0xFFE3B94F : 0xFF171819);
 			graphics.fill(tabX + 1, tabY + 1, tabX + tabSize - 1, tabY + tabSize - 1, selected ? 0xFF29251D : 0xFF30302D);
-			ItemStack icon = itemStack(string(category, "icon", "minecraft:book"));
+			ItemStack icon = categoryIcon(category);
 			graphics.item(icon, tabX + (tabSize - 16) / 2, tabY + (tabSize - 16) / 2);
 			if (selected) {
 				graphics.fill(tabX + Math.round(5 * scale), tabY + tabSize - Math.max(3, Math.round(4 * scale)),
@@ -221,7 +231,7 @@ public final class WorldMilestonesScreen extends Screen {
 		}
 	}
 
-	private void drawRotationCountdown(GuiGraphicsExtractor graphics, int panelLeft, int tabY, int tabSize, float scale) {
+	private void drawRotationCountdown(GuiGraphicsExtractor graphics, JsonArray categories, int panelLeft, int tabY, int tabSize, float scale) {
 		JsonObject category = findCategory(selectedCategory);
 		if (category == null) {
 			return;
@@ -237,18 +247,21 @@ public final class WorldMilestonesScreen extends Screen {
 		long minutes = (seconds % 3_600) / 60;
 		String remaining = days > 0 ? days + "d " + hours + "h"
 				: hours > 0 ? hours + "h " + minutes + "m" : minutes + "m " + (seconds % 60) + "s";
-		graphics.text(font, Component.translatable("gui.worldmilestones.refresh", remaining),
-				panelLeft + Math.round(4 * scale), tabY + tabSize + Math.round(2 * scale), 0xFFE4D7B8);
+		String label = Component.translatable("gui.worldmilestones.refresh", remaining).getString();
+		int labelWidth = font.width(label);
+		int marginX = Math.max(4, Math.round(12 * scale));
+		int gap = Math.max(2, Math.round(4 * scale));
+		int tabsEnd = panelLeft + Math.round(8 * scale)
+				+ Math.max(0, categories.size() - 1) * (tabSize + gap) + tabSize;
+		int labelX = width - marginX - labelWidth;
+		if (labelX < tabsEnd + gap) {
+			return;
+		}
+		graphics.text(font, label, labelX, tabY + (tabSize - 9) / 2, 0xFFE4D7B8);
 	}
 
 	private int categoryPanelTop(int tabY, int tabSize, float scale) {
-		int top = tabY + tabSize - Math.max(4, Math.round(6 * scale));
-		return hasRotationCountdown() ? top + Math.round(22 * scale) : top;
-	}
-
-	private boolean hasRotationCountdown() {
-		JsonObject category = findCategory(selectedCategory);
-		return category != null && number(category, "rotation_remaining_ms", -1) >= 0;
+		return tabY + tabSize - Math.max(4, Math.round(6 * scale));
 	}
 
 	private void drawQuestDetails(GuiGraphicsExtractor graphics, int left, int right, int top, int bottom, float scale) {
@@ -377,6 +390,23 @@ public final class WorldMilestonesScreen extends Screen {
 			return new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId)));
 		} catch (RuntimeException exception) {
 			return ItemStack.EMPTY;
+		}
+	}
+
+	private ItemStack categoryIcon(JsonObject category) {
+		String texture = string(category, "icon_texture", "");
+		if (texture.isBlank()) {
+			return itemStack(string(category, "icon", "minecraft:book"));
+		}
+		try {
+			PropertyMap properties = new PropertyMap(ImmutableMultimap.of("textures", new Property("textures", texture)));
+			UUID profileId = UUID.nameUUIDFromBytes(texture.getBytes(StandardCharsets.UTF_8));
+			GameProfile profile = new GameProfile(profileId, "WorldMilestones", properties);
+			ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+			head.set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
+			return head;
+		} catch (RuntimeException exception) {
+			return itemStack(string(category, "icon", "minecraft:book"));
 		}
 	}
 

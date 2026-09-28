@@ -7,7 +7,7 @@ Fabric mod for Minecraft 26.2 that provides JSON-defined categories, quests, sec
 On the first server start, defaults are copied to `config/worldmilestones/`:
 
 - `config.json` controls join synchronization and legacy weekly mission rotation.
-- `categories.json` is an array containing all category definitions. Set `id`, `name` (the title), `icon` (a Minecraft item ID), `description`, `color`, and `order` for each category. A timed category can also set `rotation_interval` (for example `7d`) and `active_quest_count`.
+- `categories.json` is an array containing all category definitions. Set `id`, `name` (the title), `icon` (a Minecraft item ID), `description`, `color`, and `order` for each category. A category icon can use `icon_texture` with a base64 skin texture value to render a custom player head. A timed category can also set `rotation_interval` (for example `7d`) and `active_quest_count`.
 - `quests/<category-id>/*.json` contains one quest definition per file, grouped by category.
 
 Edit or add JSON files and run `/wm reload` to apply them without restarting. Unknown reward types are ignored and reported only when granting; built-in reward types are `experience`, `item`, and `command`. Commands in reward definitions run as the server and may use `%player%`.
@@ -51,6 +51,7 @@ Commands are available with either the `/wm` or `/worldmilestones` prefix. For e
 - `/wm open` opens the client quest browser.
 - `/wm info <quest>` shows a quest's description, requirements, and your progress.
 - `/wm reload` reloads the category and quest JSON files.
+- `/wm rotation reduce <category> <duration>` reduces the time until a timed category rotates. Durations use `s`, `m`, `h`, `d`, or `w`, such as `/wm rotation reduce semanal 1d`.
 - `/wm complete <quest>` completes a quest and grants its rewards, including rewards for required sections.
 - `/wm progress <quest> <amount>` sets a quest's progress. If the required amount is reached, the quest is completed and its rewards are granted.
 - `/wm section <quest> <section>` completes a section, grants its rewards once, and checks whether the quest is complete using its `ALL`, `ANY`, or `X_OF_Y` completion mode.

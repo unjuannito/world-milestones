@@ -231,6 +231,16 @@ public final class ProgressStore {
 		return rotation == null ? 0 : rotation.nextRotationAt;
 	}
 
+	public long reduceCategoryRotation(String categoryId, long amountMillis, long now) {
+		WorldProgress.CategoryRotation rotation = world.categoryRotations.get(categoryId);
+		if (rotation == null || rotation.nextRotationAt <= 0 || amountMillis <= 0) {
+			return -1;
+		}
+		rotation.nextRotationAt = Math.max(now, rotation.nextRotationAt - amountMillis);
+		save();
+		return rotation.nextRotationAt;
+	}
+
 	public boolean rotateCategoryQuests(String categoryId, long now, long intervalMillis, List<String> pool, int count) {
 		if (intervalMillis <= 0) {
 			return false;

@@ -7,6 +7,8 @@ public final class CategoryDefinition {
 	public String name = "";
 	public String description = "";
 	public String icon = "minecraft:book";
+	@SerializedName("icon_texture")
+	public String iconTexture = "";
 	public String color = "#FFFFFF";
 	public int order;
 	public boolean visible = true;
@@ -17,10 +19,14 @@ public final class CategoryDefinition {
 	public int activeQuestCount = 1;
 
 	public long rotationIntervalMillis() {
-		if (rotationInterval == null || rotationInterval.isBlank()) {
+		return parseDurationMillis(rotationInterval);
+	}
+
+	public static long parseDurationMillis(String duration) {
+		if (duration == null || duration.isBlank()) {
 			return 0;
 		}
-		String value = rotationInterval.trim().toLowerCase(java.util.Locale.ROOT);
+		String value = duration.trim().toLowerCase(java.util.Locale.ROOT);
 		char unit = value.charAt(value.length() - 1);
 		try {
 			long amount = Long.parseLong(value.substring(0, value.length() - 1));
