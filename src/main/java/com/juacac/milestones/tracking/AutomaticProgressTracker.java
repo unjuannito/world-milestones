@@ -78,27 +78,27 @@ public final class AutomaticProgressTracker {
 			Stat<?> stat = switch (type) {
 				case "mob_killed" -> {
 					var entityType = BuiltInRegistries.ENTITY_TYPE.get(Identifier.parse(target)).orElse(null);
-					yield entityType == null ? null : Stats.ENTITY_KILLED.get(entityType);
+					yield entityType == null ? null : Stats.ENTITY_KILLED.get(entityType.value());
 				}
 				case "item_crafted" -> {
 					var item = BuiltInRegistries.ITEM.get(Identifier.parse(target)).orElse(null);
-					yield item == null ? null : Stats.ITEM_CRAFTED.get(item);
+					yield item == null ? null : Stats.ITEM_CRAFTED.get(item.value());
 				}
 				case "item_smelted" -> {
 					var item = BuiltInRegistries.ITEM.get(Identifier.parse(target)).orElse(null);
-					yield item == null ? null : Stats.ITEM_CRAFTED.get(item);
+					yield item == null ? null : Stats.ITEM_CRAFTED.get(item.value());
 				}
 				case "item_used" -> {
 					var item = BuiltInRegistries.ITEM.get(Identifier.parse(target)).orElse(null);
-					yield item == null ? null : Stats.ITEM_USED.get(item);
+					yield item == null ? null : Stats.ITEM_USED.get(item.value());
 				}
 				case "block_placed" -> {
 					var item = BuiltInRegistries.ITEM.get(Identifier.parse(target)).orElse(null);
-					yield item == null ? null : Stats.ITEM_USED.get(item);
+					yield item == null ? null : Stats.ITEM_USED.get(item.value());
 				}
 				case "block_mined" -> {
 					var block = BuiltInRegistries.BLOCK.get(Identifier.parse(target)).orElse(null);
-					yield block == null ? null : Stats.BLOCK_MINED.get(block);
+					yield block == null ? null : Stats.BLOCK_MINED.get(block.value());
 				}
 				case "animals_bred" -> Stats.CUSTOM.get(Stats.ANIMALS_BRED);
 				case "target_hit" -> Stats.CUSTOM.get(Stats.TARGET_HIT);

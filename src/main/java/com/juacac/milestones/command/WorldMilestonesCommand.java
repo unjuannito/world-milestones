@@ -49,7 +49,7 @@ public final class WorldMilestonesCommand {
 					.then(Commands.literal("section").requires(WorldMilestonesCommand::hasAdminPermission)
 							.then(Commands.argument("quest", StringArgumentType.word())
 									.then(Commands.argument("section", StringArgumentType.word())
-										.executes(context -> completeSection(context.getSource(), StringArgumentType.getString(context, "quest"), StringArgumentType.getString(context, "section")))))
+									.executes(context -> completeSection(context.getSource(), StringArgumentType.getString(context, "quest"), StringArgumentType.getString(context, "section"))))))
 					.then(Commands.literal("admin").requires(source -> hasPermissionLevel(source, 2))
 							.then(Commands.literal("add")
 									.then(Commands.argument("player", EntityArgument.player())
@@ -85,7 +85,8 @@ public final class WorldMilestonesCommand {
 			return 0;
 		}
 		for (var id : admins) {
-			String name = source.getServer().getProfileCache().get(id).map(profile -> profile.name()).orElse(id.toString());
+			ServerPlayer onlinePlayer = source.getServer().getPlayerList().getPlayer(id);
+			String name = onlinePlayer == null ? id.toString() : onlinePlayer.getGameProfile().name();
 			source.sendSuccess(() -> Component.literal(name + " [" + id + "]"), false);
 		}
 		return admins.size();
