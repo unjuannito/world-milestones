@@ -66,7 +66,7 @@ public class TemplateMod implements ModInitializer {
 	}
 
 	public static boolean hasPermissionLevel(ServerPlayer player, int permissionLevel) {
-		return permissionLevel <= 0 || player.getServer().getPlayerList().isOp(player.getGameProfile());
+		return permissionLevel <= 0 || player.level().getServer().getPlayerList().isOp(player.nameAndId());
 	}
 
 	public static void sendSnapshot(ServerPlayer player, boolean openScreen) {
@@ -109,7 +109,7 @@ public class TemplateMod implements ModInitializer {
 	}
 
 	public static void syncProgress(QuestDefinition quest, ServerPlayer actor) {
-		var server = actor.getServer();
+		var server = actor.level().getServer();
 		var actorTeam = actor.getTeam();
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			boolean affected = switch (quest.progressScope) {

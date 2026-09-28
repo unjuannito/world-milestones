@@ -243,7 +243,7 @@ public final class WorldMilestonesCommand {
 	private static void grantRewards(java.util.List<com.google.gson.JsonObject> rewards, String sourceId, ServerPlayer player) {
 		for (var rewardData : rewards) {
 			try {
-				RewardTypeRegistry.create(rewardData).ifPresent(reward -> reward.grant(player, player.getServer()));
+				RewardTypeRegistry.create(rewardData).ifPresent(reward -> reward.grant(player, player.level().getServer()));
 			} catch (RuntimeException exception) {
 				TemplateMod.LOGGER.error("Could not grant reward for {}", sourceId, exception);
 			}

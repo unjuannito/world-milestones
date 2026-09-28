@@ -3,7 +3,7 @@ package com.juacac.milestones.client;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -39,21 +39,21 @@ public final class WorldMilestonesScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-		renderBackground(graphics, mouseX, mouseY, delta);
+	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+		extractBackground(graphics, mouseX, mouseY, delta);
 		graphics.fill(0, 0, width, height, 0xA9101718);
-		graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
+		graphics.centeredText(font, title, width / 2, 18, 0xFFFFFF);
 		if (selectedCategory == null) {
 			drawCategoriesHeader(graphics);
 		} else {
 			drawQuestDetails(graphics);
 		}
-		super.render(graphics, mouseX, mouseY, delta);
+		super.extractRenderState(graphics, mouseX, mouseY, delta);
 	}
 
 	@Override
 	public void onClose() {
-		minecraft.setScreen(parent);
+		minecraft.setScreenAndShow(parent);
 	}
 
 	private void addCategoryButtons() {
@@ -99,21 +99,21 @@ public final class WorldMilestonesScreen extends Screen {
 		}
 	}
 
-	private void drawCategoriesHeader(GuiGraphics graphics) {
-		graphics.drawCenteredString(font, Component.translatable("gui.worldmilestones.categories"), width / 2, 32, 0xA8D8A8);
+	private void drawCategoriesHeader(GuiGraphicsExtractor graphics) {
+		graphics.centeredText(font, Component.translatable("gui.worldmilestones.categories"), width / 2, 32, 0xA8D8A8);
 	}
 
-	private void drawQuestDetails(GuiGraphics graphics) {
+	private void drawQuestDetails(GuiGraphicsExtractor graphics) {
 		JsonObject quest = findQuest(selectedQuest);
 		if (quest == null) {
-			graphics.drawString(font, Component.translatable("gui.worldmilestones.empty"), width / 2, height / 2, 0xFFFFFF);
+			graphics.text(font, Component.translatable("gui.worldmilestones.empty"), width / 2, height / 2, 0xFFFFFF);
 			return;
 		}
 		int left = Math.max(width / 3 + 18, 150);
 		int right = width - 18;
 		int textWidth = Math.max(100, right - left);
 		graphics.fill(left - 8, 42, right, height - 14, 0xB8202928);
-		graphics.drawString(font, string(quest, "icon", "minecraft:book") + "  " + string(quest, "name", selectedQuest), left, 52, 0xFFFFFF);
+		graphics.text(font, string(quest, "icon", "minecraft:book") + "  " + string(quest, "name", selectedQuest), left, 52, 0xFFFFFF);
 		int y = drawWrapped(graphics, string(quest, "description", ""), left, 72, textWidth, 0xD0D8D0);
 		long current = snapshot.has("progress") && snapshot.getAsJsonObject("progress").has(selectedQuest)
 				? snapshot.getAsJsonObject("progress").get(selectedQuest).getAsLong() : 0;
@@ -122,12 +122,12 @@ public final class WorldMilestonesScreen extends Screen {
 		int filled = (int) (barWidth * Math.min(current, required) / required);
 		graphics.fill(left, y + 4, left + barWidth, y + 12, 0xFF394541);
 		graphics.fill(left, y + 4, left + filled, y + 12, 0xFF67C587);
-		graphics.drawString(font, Math.min(current, required) + "/" + required, left + barWidth + 8, y + 2, 0xFFFFFF);
+		graphics.text(font, Math.min(current, required) + "/" + required, left + barWidth + 8, y + 2, 0xFFFFFF);
 		y += 23;
 		boolean completed = array("completed").asList().stream().anyMatch(element -> selectedQuest.equals(element.getAsString()));
-		graphics.drawString(font, Component.translatable(completed ? "gui.worldmilestones.completed" : "gui.worldmilestones.in_progress"), left, y, completed ? 0x7FE09A : 0xE5D28A);
+		graphics.text(font, Component.translatable(completed ? "gui.worldmilestones.completed" : "gui.worldmilestones.in_progress"), left, y, completed ? 0x7FE09A : 0xE5D28A);
 		y += 16;
-		graphics.drawString(font, Component.translatable("gui.worldmilestones.sections"), left, y, 0xA8D8A8);
+		graphics.text(font, Component.translatable("gui.worldmilestones.sections"), left, y, 0xA8D8A8);
 		y += 13;
 		if (quest.has("sections") && quest.get("sections").isJsonArray()) {
 			for (JsonElement element : quest.getAsJsonArray("sections")) {
@@ -146,7 +146,7 @@ public final class WorldMilestonesScreen extends Screen {
 				long sectionRequired = Math.max(1, number(section, "required_progress", 1));
 				boolean sectionComplete = sectionCurrent >= sectionRequired;
 				String marker = sectionComplete ? "[x] " : "[ ] ";
-				graphics.drawString(font, marker + string(section, "name", sectionId) + " "
+				graphics.text(font, marker + string(section, "name", sectionId) + " "
 						+ Math.min(sectionCurrent, sectionRequired) + "/" + sectionRequired, left, y, 0xE4E8E4);
 				y += 12;
 			}
@@ -156,11 +156,11 @@ public final class WorldMilestonesScreen extends Screen {
 		drawJsonList(graphics, quest, "rewards", "gui.worldmilestones.rewards", left, y, textWidth, 0x88D99A);
 	}
 
-	private int drawJsonList(GuiGraphics graphics, JsonObject quest, String field, String titleKey, int x, int y, int maxWidth, int color) {
+	private int drawJsonList(GuiGraphicsExtractor graphics, JsonObject quest, String field, String titleKey, int x, int y, int maxWidth, int color) {
 		if (!quest.has(field) || !quest.get(field).isJsonArray() || quest.getAsJsonArray(field).isEmpty()) {
 			return y;
 		}
-		graphics.drawString(font, Component.translatable(titleKey), x, y, 0xA8D8A8);
+		graphics.text(font, Component.translatable(titleKey), x, y, 0xA8D8A8);
 		y += 13;
 		for (JsonElement element : quest.getAsJsonArray(field)) {
 			if (y > height - 42) {
@@ -173,9 +173,9 @@ public final class WorldMilestonesScreen extends Screen {
 		return y + 5;
 	}
 
-	private int drawWrapped(GuiGraphics graphics, String text, int x, int y, int maxWidth, int color) {
+	private int drawWrapped(GuiGraphicsExtractor graphics, String text, int x, int y, int maxWidth, int color) {
 		for (var line : font.split(Component.literal(text), maxWidth)) {
-			graphics.drawString(font, line, x, y, color);
+			graphics.text(font, line, x, y, color);
 			y += 10;
 		}
 		return y + 3;
