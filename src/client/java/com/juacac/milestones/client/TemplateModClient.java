@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
@@ -55,8 +56,13 @@ public class TemplateModClient implements ClientModInitializer {
 				}
 			});
 			if (screen instanceof InventoryScreen) {
-				Screens.getWidgets(screen).add(Button.builder(Component.translatable("gui.worldmilestones.open"), button ->
-						requestOpen(client)).bounds(8, 8, 132, 20).build());
+				int inventoryLeft = (screen.width - 176) / 2;
+				int inventoryTop = (screen.height - 166) / 2;
+				Button milestonesButton = Button.builder(Component.literal("✦"), button -> requestOpen(client))
+						.bounds(inventoryLeft - 24, inventoryTop + 5, 20, 20)
+						.tooltip(Tooltip.create(Component.translatable("gui.worldmilestones.open")))
+						.build();
+				Screens.getWidgets(screen).add(milestonesButton);
 			}
 		});
 	}
