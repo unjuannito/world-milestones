@@ -181,6 +181,9 @@ public final class WorldMilestonesScreen extends Screen {
 	}
 
 	private JsonObject findQuest(String id) {
+		if (id == null) {
+			return null;
+		}
 		for (JsonElement element : array("quests")) {
 			JsonObject quest = element.getAsJsonObject();
 			if (id.equals(string(quest, "id", ""))) {
